@@ -1,0 +1,13 @@
+dest: ./inventory/
+things:
+  logo/:
+    github.svg:
+      url: https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg
+      digest: sha256:12794390cce7d0682ffc783c785e4282305684431b30b29ed75c224da24035b4
+    microsoft.svg:
+      url: https://en.wikipedia.org/wiki/File:Microsoft_logo_(2012).svg
+      digest: sha256:e9e7ff23e63676741cbf0297010bb61614313165134924131b69178a45dab4aa
+  money/:
+    no-such-thing:
+      url: https://localhost/not-exists
+      digest: sha256:4242424242424242424242424242424242424242424242424242424242424242
