@@ -11,7 +11,7 @@ import (
 
 type fileBringer struct{}
 
-func FileBringer() Bringer {
+func FileBringer(opts ...Option) Bringer {
 	return &fileBringer{}
 }
 

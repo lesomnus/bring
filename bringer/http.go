@@ -11,7 +11,7 @@ import (
 
 type httpBringer struct{}
 
-func HttpBringer() Bringer {
+func HttpBringer(opts ...Option) Bringer {
 	return &httpBringer{}
 }
 
