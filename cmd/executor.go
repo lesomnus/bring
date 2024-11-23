@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 )
@@ -44,6 +45,12 @@ func (e *Executor) Execute(p string, t *thing.Thing) {
 	if err := thing.ErrFromDigest(t.Digest); err != nil {
 		errs = append(errs, err)
 	}
+
+	b, err := bringer.FromUrl(t.Url)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("get bringer: %w", err))
+	}
+
 	if len(errs) > 0 {
 		hook.OnError(errors.Join(errs...))
 		return
@@ -69,7 +76,7 @@ func (e *Executor) Execute(p string, t *thing.Thing) {
 		return
 	}
 
-	r, err := t.Bring(e.Context)
+	r, err := b.Bring(e.Context, *t)
 	if err != nil {
 		hook.OnError(fmt.Errorf("bring: %w", err))
 		return

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 	"github.com/urfave/cli/v2"
@@ -42,13 +43,13 @@ func NewCmdDigest() *cli.Command {
 				return fmt.Errorf("parse target: %w", err)
 			}
 
-			t := thing.Thing{Url: url}
-			b, err := t.Bringer()
+			b, err := bringer.FromUrl(url)
 			if err != nil {
 				return fmt.Errorf("get bringer: %w", err)
 			}
 
-			r, err := b.Bring(c.Context)
+			t := thing.Thing{Url: url}
+			r, err := b.Bring(c.Context, t)
 			if err != nil {
 				return fmt.Errorf("get reader: %w", err)
 			}

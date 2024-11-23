@@ -1,4 +1,4 @@
-package thing
+package bringer
 
 import (
 	"bytes"
@@ -6,13 +6,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 )
-
-type Bringer interface {
-	Thing() Thing
-	Bring(ctx context.Context) (io.ReadCloser, error)
-}
 
 type safeBringer struct {
 	Bringer
@@ -22,15 +18,13 @@ func SafeBringer(b Bringer) Bringer {
 	return &safeBringer{b}
 }
 
-func (b *safeBringer) Bring(ctx context.Context) (io.ReadCloser, error) {
-	t := b.Thing()
-
+func (b *safeBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
 	algorithm := t.Digest.Algorithm()
 	if !algorithm.Available() {
 		return nil, fmt.Errorf("unknown type of digest")
 	}
 
-	r, err := b.Bringer.Bring(ctx)
+	r, err := b.Bringer.Bring(ctx, t)
 	if err != nil {
 		return nil, err
 	}

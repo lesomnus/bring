@@ -1,25 +1,21 @@
-package thing
+package bringer
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/lesomnus/bring/thing"
 )
 
-type httpBringer struct {
-	t Thing
+type httpBringer struct{}
+
+func HttpBringer() Bringer {
+	return &httpBringer{}
 }
 
-func HttpBringer(t Thing) Bringer {
-	return &httpBringer{t}
-}
-
-func (b *httpBringer) Thing() Thing {
-	return b.t
-}
-
-func (b *httpBringer) Bring(ctx context.Context) (io.ReadCloser, error) {
+func (b *httpBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
 	// TODO: check ETag, Cache-Control, of Last-Modified header.
 	// res, err := http.Head(t.Url.String())
 	// if err != nil {
@@ -33,7 +29,7 @@ func (b *httpBringer) Bring(ctx context.Context) (io.ReadCloser, error) {
 	// }
 	// defer f.Close()
 
-	res, err := http.Get(b.t.Url.String())
+	res, err := http.Get(t.Url.String())
 	if err != nil {
 		return nil, fmt.Errorf("request get: %w", err)
 	}
