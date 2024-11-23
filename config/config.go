@@ -1,15 +1,44 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
 )
 
+type confCtxKey struct{}
+
 type Config struct {
-	Dest   string
+	Dest string
+	Log  LogConfig
+
 	Things Entry
+}
+
+func New() *Config {
+	return &Config{
+		Dest: "./inventory/",
+		Log: LogConfig{
+			Enabled: true,
+			Format:  "simple",
+			Level:   "warn",
+		},
+	}
+}
+
+func From(ctx context.Context) *Config {
+	v, ok := ctx.Value(confCtxKey{}).(*Config)
+	if ok {
+		return nil
+	}
+
+	return v
+}
+
+func Into(ctx context.Context, conf *Config) context.Context {
+	return context.WithValue(ctx, confCtxKey{}, conf)
 }
 
 func LoadFromFilepath(p string) (*Config, error) {

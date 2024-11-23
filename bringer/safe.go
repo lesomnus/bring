@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 )
@@ -19,9 +20,11 @@ func SafeBringer(b Bringer) Bringer {
 }
 
 func (b *safeBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
+	l := log.From(ctx).With(name("safe"))
+
 	algorithm := t.Digest.Algorithm()
 	if !algorithm.Available() {
-		return nil, fmt.Errorf("unknown type of digest")
+		return nil, fmt.Errorf("unknown type of digest: %s", string(algorithm))
 	}
 
 	r, err := b.Bringer.Bring(ctx, t)
@@ -31,6 +34,7 @@ func (b *safeBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, 
 
 	if s, ok := r.(io.ReadSeekCloser); ok {
 		// We can seek to start after calculating a digest rather than copy.
+		l.Debug("source is seek-able; seek start")
 		return b.finalizeSeeker(t.Digest, s)
 	}
 

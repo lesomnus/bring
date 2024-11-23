@@ -40,6 +40,9 @@ func (e *Entry) Walk(p string, f EntryWalkFunc) {
 		f(p, e.Thing)
 		return
 	}
+	if e.Next == nil {
+		return
+	}
 
 	ks := maps.Keys(e.Next)
 	for _, k := range slices.Sorted(ks) {
@@ -52,6 +55,9 @@ func (e *Entry) UnmarshalYAML(n *yaml.Node) error {
 	nodes := map[string]yaml.Node{}
 	if err := n.Decode(nodes); err != nil {
 		return err
+	}
+	if len(nodes) == 0 {
+		return nil
 	}
 
 	e.Next = map[string]*Entry{}

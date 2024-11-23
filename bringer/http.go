@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 )
 
@@ -16,6 +18,8 @@ func HttpBringer(opts ...Option) Bringer {
 }
 
 func (b *httpBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
+	l := log.From(ctx).With(name("http"))
+
 	// TODO: check ETag, Cache-Control, of Last-Modified header.
 	// res, err := http.Head(t.Url.String())
 	// if err != nil {
@@ -29,9 +33,14 @@ func (b *httpBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, 
 	// }
 	// defer f.Close()
 
+	l.Info("request GET")
 	res, err := http.Get(t.Url.String())
 	if err != nil {
 		return nil, fmt.Errorf("request get: %w", err)
+	}
+	l.Info("response", slog.Int("status", res.StatusCode))
+	if l.Enabled(ctx, slog.LevelDebug) {
+		l.Debug("response", slog.String("header", fmt.Sprintf("%v", res.Header)))
 	}
 
 	return res.Body, nil

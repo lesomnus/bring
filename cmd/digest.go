@@ -17,6 +17,7 @@ func NewCmdDigest() *cli.Command {
 	return &cli.Command{
 		Name:  "digest",
 		Usage: "Calculate digest of a thing from a file or an URL",
+
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "with",

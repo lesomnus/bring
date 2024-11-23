@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"strings"
 
 	"github.com/hirochachacha/go-smb2"
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 )
 
@@ -44,6 +46,7 @@ func (f *smbFile) Close() error {
 }
 
 func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err error) {
+	l := log.From(ctx).With(name("smb"))
 	// TODO: connection pool? session pool?
 
 	v = &smbFile{}
@@ -52,8 +55,10 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err 
 	if !strings.Contains(host, ":") {
 		// Add default port number
 		host += ":445"
+		l.Debug("use default por number")
 	}
 
+	l.Info("dial TCP", slog.String("host", host))
 	v.conn, err = net.Dial("tcp", host)
 	if err != nil {
 		return v, fmt.Errorf("dial TCP: %w", err)
@@ -69,17 +74,23 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err 
 			Password: password,
 		},
 	}
+
+	l.Info("dial SMB",
+		slog.String("username", username),
+		slog.Bool("password", password != ""),
+	)
 	v.session, err = d.Dial(v.conn)
 	if err != nil {
 		return v, fmt.Errorf("dial SMB: %w", err)
 	}
-	// defer s.Logoff()
 
+	l.Info("mount", slog.String("share", share))
 	v.share, err = v.session.Mount(share)
 	if err != nil {
 		return v, fmt.Errorf("mount SMB share %s: %w", share, err)
 	}
 
+	l.Info("open", slog.String("path", p))
 	v.share = v.share.WithContext(ctx)
 	v.File, err = v.share.Open(p)
 	if err != nil {

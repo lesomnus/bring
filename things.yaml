@@ -1,4 +1,9 @@
 dest: ./inventory/
+log:
+  enabled: true
+  format: simple # "text" | "json" | "simple"
+  level: warn # "error" | "warn" | "info" | "debug"
+
 things:
   logo/:
     github.svg:

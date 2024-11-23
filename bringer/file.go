@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 )
 
@@ -16,6 +18,9 @@ func FileBringer(opts ...Option) Bringer {
 }
 
 func (b *fileBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
+	l := log.From(ctx).With(name("file"))
+	l.Info("open", slog.String("path", t.Url.Path))
+
 	f, err := os.Open(t.Url.Path)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)

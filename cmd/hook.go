@@ -19,7 +19,9 @@ type ExecuteHook interface {
 
 type StdIoPrinterHook struct {
 	ctx ExecuteContext
-	t0  time.Time
+
+	n  int
+	t0 time.Time
 
 	isSettled bool
 }
@@ -47,7 +49,7 @@ func (h *StdIoPrinterHook) header(sym string) string {
 	pb := color.New(color.FgHiBlack, color.Faint)
 	ph := color.New(color.FgWhite)
 	w := countDigits(h.ctx.N)
-	v := pb.Sprint("[") + ph.Sprintf("%*d", w, h.ctx.I) +
+	v := pb.Sprint("[") + ph.Sprintf("%*d", w, h.n) +
 		pb.Sprint("/") + fmt.Sprintf("%d", h.ctx.N) +
 		pb.Sprint("|") + sym +
 		pb.Sprint("]")
@@ -91,6 +93,7 @@ func (h *StdIoPrinterHook) dt() string {
 }
 
 func (h *StdIoPrinterHook) OnStart() {
+	h.n++
 	h.t0 = time.Now()
 }
 
@@ -112,7 +115,7 @@ func (h *StdIoPrinterHook) OnDone() {
 func (h *StdIoPrinterHook) OnError(err error) {
 	pr := color.New(color.FgHiRed)
 	sym := pr.Sprint("!")
-	fmt.Fprintf(os.Stdout, "%s %s • %s\n\t%s\n", h.header(sym), h.path(), h.dt(), pr.Sprint(err.Error()))
+	fmt.Fprintf(os.Stdout, "%s %s ∙ %s\n\t%s\n", h.header(sym), h.path(), h.dt(), pr.Sprint(err.Error()))
 }
 
 func (h *StdIoPrinterHook) OnFinish() {

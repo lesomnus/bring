@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/lesomnus/bring/bringer"
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 )
@@ -17,7 +20,6 @@ type ExecuteContext struct {
 	context.Context
 
 	N int
-	I int
 
 	Path  string
 	Thing *thing.Thing
@@ -30,10 +32,27 @@ type Executor struct {
 }
 
 func (e *Executor) Execute(p string, t *thing.Thing) {
-	e.Context.I += 1
 	ctx := e.Context
 	ctx.Path = p
 	ctx.Thing = t
+
+	// TODO: move to hook
+
+	l := log.From(ctx)
+	if _, ok := t.Url.User.Password(); ok {
+		u := *t.Url
+		u.User = url.UserPassword(u.User.Username(), "__redacted__")
+		l = l.With(
+			slog.String("from", u.String()),
+			slog.String("to", p),
+		)
+	} else {
+		l = l.With(
+			slog.String("from", t.Url.String()),
+			slog.String("to", p),
+		)
+	}
+	l.Info("start")
 
 	hook := e.NewHook(ctx)
 	hook.OnStart()
@@ -68,7 +87,7 @@ func (e *Executor) Execute(p string, t *thing.Thing) {
 		return
 	}
 
-	r, err := b.Bring(e.Context, *t)
+	r, err := b.Bring(ctx, *t)
 	if err != nil {
 		hook.OnError(fmt.Errorf("bring: %w", err))
 		return

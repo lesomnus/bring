@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 
 	"github.com/lesomnus/bring/thing"
@@ -20,4 +21,8 @@ func FromUrl(u *url.URL) (Bringer, error) {
 	}
 
 	return bf(), nil
+}
+
+func name(name string) slog.Attr {
+	return slog.String("bringer", name)
 }

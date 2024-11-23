@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/lesomnus/bring/cmd"
@@ -9,8 +8,5 @@ import (
 
 func main() {
 	app := cmd.NewApp()
-
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-	}
+	app.Run(os.Args)
 }

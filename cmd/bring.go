@@ -15,7 +15,8 @@ func NewCmdBring() *cli.Command {
 
 	return &cli.Command{
 		Name:  "bring",
-		Usage: "Bring things",
+		Usage: "Bring things.",
+
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "dry-run",
@@ -55,7 +56,6 @@ func NewCmdBring() *cli.Command {
 				Context: c.Context,
 
 				N: conf.Things.Len(),
-				I: 0,
 			}
 			conf.Things.Walk(conf.Dest, executor.Execute)
 
