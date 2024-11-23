@@ -6,4 +6,5 @@ var bringers = map[string](Factory){
 	"file":  FileBringer,
 	"http":  HttpBringer,
 	"https": HttpBringer,
+	"smb":   SmbBringer,
 }

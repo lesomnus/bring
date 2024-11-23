@@ -84,6 +84,7 @@ func (e *Executor) Execute(p string, t *thing.Thing) {
 
 	if _, err := io.Copy(w, r); err != nil {
 		hook.OnError(fmt.Errorf("bringing: %w", err))
+		return
 	}
 
 	hook.OnDone()

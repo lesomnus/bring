@@ -2,9 +2,13 @@ package bringer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
+	"strings"
 
+	"github.com/hirochachacha/go-smb2"
 	"github.com/lesomnus/bring/thing"
 )
 
@@ -24,6 +28,96 @@ func SmbBringer(opts ...Option) Bringer {
 	return b
 }
 
+type smbFile struct {
+	*smb2.File
+	share   *smb2.Share
+	session *smb2.Session
+	conn    net.Conn
+}
+
+func (f *smbFile) Close() error {
+	return errors.Join(
+		f.share.Umount(),
+		f.session.Logoff(),
+		f.conn.Close(),
+	)
+}
+
+func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err error) {
+	// TODO: connection pool? session pool?
+
+	v = &smbFile{}
+
+	host := t.Url.Host
+	if !strings.Contains(host, ":") {
+		// Add default port number
+		host += ":445"
+	}
+
+	v.conn, err = net.Dial("tcp", host)
+	if err != nil {
+		return v, fmt.Errorf("dial TCP: %w", err)
+	}
+
+	username := t.Url.User.Username()
+	password, _ := t.Url.User.Password()
+	share, p := b.splitPath(t.Url.Path)
+
+	d := &smb2.Dialer{
+		Initiator: &smb2.NTLMInitiator{
+			User:     username,
+			Password: password,
+		},
+	}
+	v.session, err = d.Dial(v.conn)
+	if err != nil {
+		return v, fmt.Errorf("dial SMB: %w", err)
+	}
+	// defer s.Logoff()
+
+	v.share, err = v.session.Mount(share)
+	if err != nil {
+		return v, fmt.Errorf("mount SMB share %s: %w", share, err)
+	}
+
+	v.share = v.share.WithContext(ctx)
+	v.File, err = v.share.Open(p)
+	if err != nil {
+		return nil, fmt.Errorf("open: %w", err)
+	}
+
+	return v, nil
+}
+
 func (b *smbBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
-	return nil, fmt.Errorf("not implemented")
+	f, err := b.bring(ctx, t)
+	if err != nil {
+		errs := []error{err}
+		if f.share != nil {
+			errs = append(errs, f.share.Umount())
+		}
+		if f.session != nil {
+			errs = append(errs, f.session.Logoff())
+		}
+		if f.conn != nil {
+			errs = append(errs, f.conn.Close())
+		}
+		return nil, errors.Join(errs...)
+	}
+
+	return f, nil
+}
+
+// Splits `/share_name/filepath` into `[share_name, filepath]`.
+func (b *smbBringer) splitPath(p string) (string, string) {
+	p, _ = strings.CutPrefix(p, "/")
+	ps := strings.SplitN(p, "/", 2)
+	switch len(ps) {
+	case 1:
+		return ps[0], ""
+	case 2:
+		return ps[0], ps[1]
+	default:
+		panic("splint into at most 2")
+	}
 }

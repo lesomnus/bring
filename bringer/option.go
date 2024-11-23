@@ -16,3 +16,5 @@ type pwOpt struct {
 func WithPassword(v string) Option {
 	return &pwOpt{v: v}
 }
+
+// TODO: TCP timeout

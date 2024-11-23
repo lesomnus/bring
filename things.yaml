@@ -11,3 +11,7 @@ things:
     no-such-thing:
       url: https://localhost/not-exists
       digest: sha256:4242424242424242424242424242424242424242424242424242424242424242
+  smb/:
+    foo:
+      url: smb://username:password@server.com/share/path/to/file/foo
+      digest: sha256:a072386b79426dfaf44d1ee53d9c3ad95f341373baffb31e49d4c1828ffff0b4
