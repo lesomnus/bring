@@ -37,22 +37,14 @@ func (e *Executor) Execute(p string, t *thing.Thing) {
 
 	hook := e.NewHook(ctx)
 	hook.OnStart()
-
-	errs := []error{}
-	if err := thing.ErrFromUrl(t.Url); err != nil {
-		errs = append(errs, err)
-	}
-	if err := thing.ErrFromDigest(t.Digest); err != nil {
-		errs = append(errs, err)
+	if err := t.Validate(); err != nil {
+		hook.OnError(fmt.Errorf("invalid thing: %w", err))
+		return
 	}
 
 	b, err := bringer.FromUrl(t.Url)
 	if err != nil {
-		errs = append(errs, fmt.Errorf("get bringer: %w", err))
-	}
-
-	if len(errs) > 0 {
-		hook.OnError(errors.Join(errs...))
+		hook.OnError(fmt.Errorf("get bringer: %w", err))
 		return
 	}
 

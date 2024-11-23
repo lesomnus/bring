@@ -1,6 +1,7 @@
 package thing
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -9,7 +10,6 @@ import (
 )
 
 type Thing struct {
-	Name   string
 	Url    *url.URL
 	Digest digest.Digest
 }
@@ -20,14 +20,29 @@ func (t *Thing) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	if n, ok := obj["name"]; ok {
-		t.Name = n.Value
-	}
 	if n, ok := obj["url"]; ok {
 		t.Url = parseUrl(&n)
 	}
 	if n, ok := obj["digest"]; ok {
 		t.Digest = parseDigest(&n)
+	}
+
+	return nil
+}
+
+func (t *Thing) Validate() error {
+	errs := []error{}
+	if err := ErrFromUrl(t.Url); err != nil {
+		errs = append(errs, err)
+	}
+	if err := ErrFromDigest(t.Digest); err != nil {
+		errs = append(errs, err)
+	}
+	if err := t.Digest.Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("invalid digest: %w", err))
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -60,13 +75,6 @@ func parseDigest(n *yaml.Node) digest.Digest {
 			return NewFailedDigest(FailInvalid, err.Error())
 		}
 
-		d := digest.NewDigestFromHex(o.Algo, o.Value)
-		if !d.Algorithm().Available() {
-			return NewFailedDigest(FailNotSupported, fmt.Sprintf("algorithm %s not supported", d.Algorithm().String()))
-		}
-		if err := d.Validate(); err != nil {
-			return NewFailedDigest(FailInvalid, err.Error())
-		}
 		return digest.NewDigestFromHex(o.Algo, o.Value)
 
 	default:

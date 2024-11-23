@@ -13,8 +13,7 @@ type Fail string
 const (
 	failPrefix = "!"
 
-	FailInvalid      Fail = "!invalid"
-	FailNotSupported Fail = "!not supported"
+	FailInvalid Fail = "!invalid"
 )
 
 func NewFailedUrl(f Fail, msg string) *url.URL {
