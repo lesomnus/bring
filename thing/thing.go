@@ -63,21 +63,17 @@ func parseUrl(n *yaml.Node) *url.URL {
 	v := &url.URL{}
 	var err error
 	if n.Kind != yaml.ScalarNode {
-		err = fmt.Errorf("expected `url` to be a string")
-	} else {
-		v, err = url.Parse(n.Value)
-		if err == nil {
-			if _, ok := bringers[v.Scheme]; ok {
-				return v
-			}
-			v.Scheme = FailNotSupported
-			err = fmt.Errorf("schema %s not supported", v.Scheme)
-		} else {
-			v.Scheme = FailInvalid
-		}
+		return NewFailedUrl(FailInvalid, "expected `url` to be a string")
 	}
 
-	v.Fragment = err.Error()
+	v, err = url.Parse(n.Value)
+	if err != nil {
+		return NewFailedUrl(FailInvalid, err.Error())
+	}
+	if _, ok := bringers[v.Scheme]; !ok {
+		return NewFailedUrl(FailNotSupported, v.Scheme)
+	}
+
 	return v
 }
 
@@ -92,19 +88,19 @@ func parseDigest(n *yaml.Node) digest.Digest {
 			Value string
 		}{}
 		if err := n.Decode(&o); err != nil {
-			return digest.NewDigestFromHex(FailInvalid, err.Error())
+			return NewFailedDigest(FailInvalid, err.Error())
 		}
 
 		d := digest.NewDigestFromHex(o.Algo, o.Value)
 		if !d.Algorithm().Available() {
-			return digest.NewDigestFromHex(FailNotSupported, fmt.Sprintf("algorithm %s not supported", d.Algorithm().String()))
+			return NewFailedDigest(FailNotSupported, fmt.Sprintf("algorithm %s not supported", d.Algorithm().String()))
 		}
 		if err := d.Validate(); err != nil {
-			return digest.NewDigestFromHex(FailInvalid, err.Error())
+			return NewFailedDigest(FailInvalid, err.Error())
 		}
 		return digest.NewDigestFromHex(o.Algo, o.Value)
 
 	default:
-		return digest.NewDigestFromHex(FailInvalid, "expected `digest` field to be a string or a map")
+		return NewFailedDigest(FailInvalid, "expected `digest` field to be a string or a map")
 	}
 }

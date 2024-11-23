@@ -40,7 +40,9 @@ func TestThingYamlParse(t *testing.T) {
 url:
   foo: bar
 `, func(require *require.Assertions, v thing.Thing, err error) {
-		require.Equal(v.Url.Scheme, thing.FailInvalid)
+		fail, ok := thing.FailFromUrl(v.Url)
+		require.True(ok)
+		require.Equal(fail, thing.FailInvalid)
 	}))
 	t.Run("digest by string", test(fmt.Sprintf("digest: %s", digest.String()), func(require *require.Assertions, v thing.Thing, err error) {
 		require.Equal(digest, v.Digest)
@@ -59,6 +61,8 @@ digest:
   - foo
   - bar
 `, func(require *require.Assertions, v thing.Thing, err error) {
-		require.Equal(v.Digest.Algorithm().String(), thing.FailInvalid)
+		fail, ok := thing.FailFromDigest(v.Digest)
+		require.True(ok)
+		require.Equal(fail, thing.FailInvalid)
 	}))
 }
