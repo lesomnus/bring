@@ -16,7 +16,7 @@ import (
 )
 
 type smbBringerConfig struct {
-	password    string
+	password    *string
 	dialTimeout time.Duration
 }
 
@@ -24,7 +24,7 @@ func (c *smbBringerConfig) apply(opts []Option) {
 	for _, opt := range opts {
 		switch o := opt.(type) {
 		case (*pwOpt):
-			c.password = o.v
+			c.password = &o.v
 		case (*dialTimeoutOpt):
 			c.dialTimeout = o.v
 		}
@@ -94,7 +94,14 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 	}
 
 	username := t.Url.User.Username()
-	password, _ := t.Url.User.Password()
+	password := ""
+	if c.password != nil {
+		password = *c.password
+	}
+	if v, ok := t.Url.User.Password(); ok {
+		password = v
+	}
+
 	share, p := b.splitPath(t.Url.Path)
 
 	l.Info("dial SMB",

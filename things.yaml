@@ -4,6 +4,10 @@ log:
   format: simple # "text" | "json" | "simple"
   level: warn # "error" | "warn" | "info" | "debug"
 
+secret:
+  enabled: true
+  url: .secrets
+
 each:
   # Process of "bring" involves the process of "dialing" to connect to the source resource
   # and the subsequent process of "downloading" the resource once the connection is established.
@@ -30,5 +34,5 @@ things:
       digest: sha256:4242424242424242424242424242424242424242424242424242424242424242
   smb/:
     foo:
-      url: smb://username:password@example.com/share/path/to/file/foo
+      url: smb://username@example.com/share/path/to/file/foo
       digest: sha256:a072386b79426dfaf44d1ee53d9c3ad95f341373baffb31e49d4c1828ffff0b4

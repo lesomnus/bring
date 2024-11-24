@@ -53,6 +53,11 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
+			executor.Secret, err = conf.Secret.Open(c.Context)
+			if err != nil {
+				return fmt.Errorf("open secret store: %w", err)
+			}
+
 			job := Job{NumTasks: conf.Things.Len()}
 			i := 0
 			conf.Things.Walk(conf.Dest, func(p string, t *thing.Thing) {

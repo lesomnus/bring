@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/config"
 	"github.com/lesomnus/bring/log"
+	"github.com/lesomnus/bring/secret"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 )
@@ -31,6 +31,8 @@ type Task struct {
 }
 
 type Executor struct {
+	Secret secret.Store
+
 	DryRun  bool
 	NewHook func(ctx context.Context, t Task) ExecuteHook
 }
@@ -39,20 +41,10 @@ func (e *Executor) Execute(ctx context.Context, t Task) {
 	// TODO: move to hook
 
 	l := log.From(ctx)
-	if _, ok := t.Thing.Url.User.Password(); ok {
-		u := t.Thing.Url
-		u.User = url.UserPassword(u.User.Username(), "__redacted__")
-		l = l.With(
-			slog.String("from", u.String()),
-			slog.String("to", t.Dest),
-		)
-	} else {
-		l = l.With(
-			slog.String("from", t.Thing.Url.String()),
-			slog.String("to", t.Dest),
-		)
-	}
-	l.Info("start")
+	l.Info("start",
+		slog.String("from", t.Thing.Url.Redacted()),
+		slog.String("to", t.Dest),
+	)
 
 	hook := e.NewHook(ctx, t)
 	hook.OnStart()
@@ -89,6 +81,22 @@ func (e *Executor) Execute(ctx context.Context, t Task) {
 
 	ctx_bring := ctx
 	opts := []bringer.Option{}
+	if t.Thing.Url.User.Username() != "" {
+		if _, ok := t.Thing.Url.User.Password(); ok {
+			l.Info("use password", slog.String("source", "URL"))
+		} else {
+			l.Info("use password", slog.String("source", "store"))
+
+			// TODO: need timeout?
+			pw, err := e.Secret.Read(ctx, t.Thing.Url)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				hook.OnError(fmt.Errorf("read secret: %w", err))
+				return
+			}
+
+			opts = append(opts, bringer.WithPassword(string(pw)))
+		}
+	}
 	if t.BringConfig.BringTimeout != 0 {
 		c, cancel := context.WithTimeout(ctx_bring, t.BringConfig.BringTimeout)
 		ctx_bring = c
