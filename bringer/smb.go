@@ -8,24 +8,36 @@ import (
 	"log/slog"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/hirochachacha/go-smb2"
 	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 )
 
+type smbBringerConfig struct {
+	password    string
+	dialTimeout time.Duration
+}
+
+func (c *smbBringerConfig) apply(opts []Option) {
+	for _, opt := range opts {
+		switch o := opt.(type) {
+		case (*pwOpt):
+			c.password = o.v
+		case (*dialTimeoutOpt):
+			c.dialTimeout = o.v
+		}
+	}
+}
+
 type smbBringer struct {
-	password string
+	conf smbBringerConfig
 }
 
 func SmbBringer(opts ...Option) Bringer {
 	b := &smbBringer{}
-	for _, opt := range opts {
-		switch o := opt.(type) {
-		case (*pwOpt):
-			b.password = o.v
-		}
-	}
+	b.conf.apply(opts)
 
 	return b
 }
@@ -45,9 +57,12 @@ func (f *smbFile) Close() error {
 	)
 }
 
-func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err error) {
+func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (v *smbFile, err error) {
 	l := log.From(ctx).With(name("smb"))
 	// TODO: connection pool? session pool?
+
+	c := b.conf
+	c.apply(opts)
 
 	v = &smbFile{}
 
@@ -58,30 +73,45 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err 
 		l.Debug("use default por number")
 	}
 
+	ctx_dial := ctx
+	if c.dialTimeout != 0 {
+		ctx_, cancel := context.WithTimeout(ctx, c.dialTimeout)
+		defer cancel()
+		ctx_dial = ctx_
+	}
+
 	l.Info("dial TCP", slog.String("host", host))
-	v.conn, err = net.Dial("tcp", host)
-	if err != nil {
-		return v, fmt.Errorf("dial TCP: %w", err)
+	{
+		d := net.Dialer{}
+		v.conn, err = d.DialContext(ctx_dial, "tcp", host)
+		if err != nil {
+			e := &net.OpError{}
+			if errors.As(err, &e) {
+				return v, err
+			}
+			return v, fmt.Errorf("dial TCP: %w", err)
+		}
 	}
 
 	username := t.Url.User.Username()
 	password, _ := t.Url.User.Password()
 	share, p := b.splitPath(t.Url.Path)
 
-	d := &smb2.Dialer{
-		Initiator: &smb2.NTLMInitiator{
-			User:     username,
-			Password: password,
-		},
-	}
-
 	l.Info("dial SMB",
 		slog.String("username", username),
 		slog.Bool("password", password != ""),
 	)
-	v.session, err = d.Dial(v.conn)
-	if err != nil {
-		return v, fmt.Errorf("dial SMB: %w", err)
+	{
+		d := &smb2.Dialer{
+			Initiator: &smb2.NTLMInitiator{
+				User:     username,
+				Password: password,
+			},
+		}
+		v.session, err = d.DialContext(ctx_dial, v.conn)
+		if err != nil {
+			return v, fmt.Errorf("dial SMB: %w", err)
+		}
 	}
 
 	l.Info("mount", slog.String("share", share))
@@ -100,8 +130,8 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing) (v *smbFile, err 
 	return v, nil
 }
 
-func (b *smbBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
-	f, err := b.bring(ctx, t)
+func (b *smbBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
+	f, err := b.bring(ctx, t, opts...)
 	if err != nil {
 		errs := []error{err}
 		if f.share != nil {

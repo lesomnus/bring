@@ -19,7 +19,7 @@ func SafeBringer(b Bringer) Bringer {
 	return &safeBringer{b}
 }
 
-func (b *safeBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
+func (b *safeBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
 	l := log.From(ctx).With(name("safe"))
 
 	algorithm := t.Digest.Algorithm()
@@ -27,7 +27,7 @@ func (b *safeBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, 
 		return nil, fmt.Errorf("unknown type of digest: %s", string(algorithm))
 	}
 
-	r, err := b.Bringer.Bring(ctx, t)
+	r, err := b.Bringer.Bring(ctx, t, opts...)
 	if err != nil {
 		return nil, err
 	}

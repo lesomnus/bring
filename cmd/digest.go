@@ -39,17 +39,19 @@ func NewCmdDigest() *cli.Command {
 				target = "file://" + target
 			}
 
-			url, err := url.Parse(target)
-			if err != nil {
+			var u url.URL
+			if v, err := url.Parse(target); err != nil {
 				return fmt.Errorf("parse target: %w", err)
+			} else {
+				u = *v
 			}
 
-			b, err := bringer.FromUrl(url)
+			b, err := bringer.FromUrl(u)
 			if err != nil {
 				return fmt.Errorf("get bringer: %w", err)
 			}
 
-			t := thing.Thing{Url: url}
+			t := thing.Thing{Url: u}
 			r, err := b.Bring(c.Context, t)
 			if err != nil {
 				return fmt.Errorf("get reader: %w", err)

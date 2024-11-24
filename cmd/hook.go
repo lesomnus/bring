@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -18,17 +19,15 @@ type ExecuteHook interface {
 }
 
 type StdIoPrinterHook struct {
-	ctx ExecuteContext
-
-	n  int
-	t0 time.Time
+	task Task
+	t0   time.Time
 
 	isSettled bool
 }
 
-func NewStdIoPrinterHook(ctx ExecuteContext) ExecuteHook {
+func NewStdIoPrinterHook(ctx context.Context, t Task) ExecuteHook {
 	return &StdIoPrinterHook{
-		ctx:       ctx,
+		task:      t,
 		isSettled: false,
 	}
 }
@@ -48,9 +47,9 @@ func countDigits(n int) int {
 func (h *StdIoPrinterHook) header(sym string) string {
 	pb := color.New(color.FgHiBlack, color.Faint)
 	ph := color.New(color.FgWhite)
-	w := countDigits(h.ctx.N)
-	v := pb.Sprint("[") + ph.Sprintf("%*d", w, h.n) +
-		pb.Sprint("/") + fmt.Sprintf("%d", h.ctx.N) +
+	w := countDigits(h.task.Job.NumTasks)
+	v := pb.Sprint("[") + ph.Sprintf("%*d", w, h.task.Order) +
+		pb.Sprint("/") + fmt.Sprintf("%d", h.task.Job.NumTasks) +
 		pb.Sprint("|") + sym +
 		pb.Sprint("]")
 
@@ -58,7 +57,7 @@ func (h *StdIoPrinterHook) header(sym string) string {
 }
 
 func (h *StdIoPrinterHook) path() string {
-	return color.New(color.FgHiWhite).Sprint(h.ctx.Path)
+	return color.New(color.FgHiWhite).Sprint(h.task.Dest)
 }
 
 func (h *StdIoPrinterHook) dt() string {
@@ -93,7 +92,6 @@ func (h *StdIoPrinterHook) dt() string {
 }
 
 func (h *StdIoPrinterHook) OnStart() {
-	h.n++
 	h.t0 = time.Now()
 }
 

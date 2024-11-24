@@ -14,6 +14,7 @@ type Config struct {
 	Dest string
 	Log  LogConfig
 
+	Each   BringConfig // Config applied to each `Thing`s.
 	Things Entry
 }
 

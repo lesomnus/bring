@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/lesomnus/bring/config"
+	"github.com/lesomnus/bring/thing"
 	"github.com/urfave/cli/v2"
 )
 
@@ -52,12 +53,22 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
-			executor.Context = ExecuteContext{
-				Context: c.Context,
+			job := Job{NumTasks: conf.Things.Len()}
+			i := 0
+			conf.Things.Walk(conf.Dest, func(p string, t *thing.Thing) {
+				task := Task{
+					Thing: *t,
 
-				N: conf.Things.Len(),
-			}
-			conf.Things.Walk(conf.Dest, executor.Execute)
+					BringConfig: conf.Each,
+
+					Job:   job,
+					Order: i,
+					Dest:  p,
+				}
+
+				executor.Execute(c.Context, task)
+				i++
+			})
 
 			return nil
 		},

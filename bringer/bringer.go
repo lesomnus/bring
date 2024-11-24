@@ -11,16 +11,16 @@ import (
 )
 
 type Bringer interface {
-	Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error)
+	Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error)
 }
 
-func FromUrl(u *url.URL) (Bringer, error) {
+func FromUrl(u url.URL, opts ...Option) (Bringer, error) {
 	bf, ok := bringers[u.Scheme]
 	if !ok {
 		return nil, fmt.Errorf("scheme %s not supported", u.Scheme)
 	}
 
-	return bf(), nil
+	return bf(opts...), nil
 }
 
 func name(name string) slog.Attr {

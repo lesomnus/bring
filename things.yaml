@@ -4,6 +4,18 @@ log:
   format: simple # "text" | "json" | "simple"
   level: warn # "error" | "warn" | "info" | "debug"
 
+each:
+  # Process of "bring" involves the process of "dialing" to connect to the source resource
+  # and the subsequent process of "downloading" the resource once the connection is established.
+  #
+  #  |<-------- bring -------->|
+  #  |<- dial ->|<- download ->|
+  #
+  # So it doesn't make sense for `bring_timeout` to be shorter than `dial_timeout`.
+  # If the resource is large, you may want to use large value of `bring_timeout`.
+  # If the initial connection is slow, you may want to use large value of `dial_timeout`.
+  bring_timeout: 5m
+  dial_timeout: 3s
 things:
   logo/:
     github.svg:
@@ -18,5 +30,5 @@ things:
       digest: sha256:4242424242424242424242424242424242424242424242424242424242424242
   smb/:
     foo:
-      url: smb://username:password@server.com/share/path/to/file/foo
+      url: smb://username:password@example.com/share/path/to/file/foo
       digest: sha256:a072386b79426dfaf44d1ee53d9c3ad95f341373baffb31e49d4c1828ffff0b4

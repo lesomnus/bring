@@ -10,7 +10,7 @@ import (
 )
 
 type Thing struct {
-	Url    *url.URL
+	Url    url.URL
 	Digest digest.Digest
 }
 
@@ -21,7 +21,7 @@ func (t *Thing) UnmarshalYAML(n *yaml.Node) error {
 	}
 
 	if n, ok := obj["url"]; ok {
-		t.Url = parseUrl(&n)
+		t.Url = *parseUrl(&n)
 	}
 	if n, ok := obj["digest"]; ok {
 		t.Digest = parseDigest(&n)
@@ -32,7 +32,7 @@ func (t *Thing) UnmarshalYAML(n *yaml.Node) error {
 
 func (t *Thing) Validate() error {
 	errs := []error{}
-	if err := ErrFromUrl(t.Url); err != nil {
+	if err := ErrFromUrl(&t.Url); err != nil {
 		errs = append(errs, err)
 	}
 	if err := ErrFromDigest(t.Digest); err != nil {

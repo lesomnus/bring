@@ -1,5 +1,7 @@
 package bringer
 
+import "time"
+
 type Option interface {
 	_option()
 }
@@ -17,4 +19,11 @@ func WithPassword(v string) Option {
 	return &pwOpt{v: v}
 }
 
-// TODO: TCP timeout
+type dialTimeoutOpt struct {
+	option
+	v time.Duration
+}
+
+func WithDialTimeout(v time.Duration) Option {
+	return &dialTimeoutOpt{v: v}
+}

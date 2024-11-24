@@ -17,7 +17,7 @@ func FileBringer(opts ...Option) Bringer {
 	return &fileBringer{}
 }
 
-func (b *fileBringer) Bring(ctx context.Context, t thing.Thing) (io.ReadCloser, error) {
+func (b *fileBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
 	l := log.From(ctx).With(name("file"))
 	l.Info("open", slog.String("path", t.Url.Path))
 

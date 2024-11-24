@@ -40,7 +40,7 @@ func TestThingYamlParse(t *testing.T) {
 url:
   foo: bar
 `, func(require *require.Assertions, v thing.Thing, err error) {
-		fail, ok := thing.FailFromUrl(v.Url)
+		fail, ok := thing.FailFromUrl(&v.Url)
 		require.True(ok)
 		require.Equal(fail, thing.FailInvalid)
 	}))
