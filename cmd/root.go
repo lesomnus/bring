@@ -21,11 +21,11 @@ func NewApp() *cli.App {
 		},
 		&cli.StringFlag{
 			Name:  "log-level",
-			Usage: `Set log level ["error" | "warn" | "info" | "debug"]`,
+			Usage: `"error" | "warn" | "info" | "debug"`,
 		},
 		&cli.StringFlag{
 			Name:  "log-format",
-			Usage: `Set log format ["text" | "json" | "simple"]`,
+			Usage: `"text" | "json" | "simple"`,
 		},
 		&cli.StringFlag{
 			Name:    "config",

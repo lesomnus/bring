@@ -1,17 +1,20 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/lesomnus/bring/config"
+	"github.com/lesomnus/bring/internal/hook"
+	"github.com/lesomnus/bring/internal/task"
 	"github.com/lesomnus/bring/thing"
 	"github.com/urfave/cli/v2"
 )
 
 func NewCmdBring() *cli.Command {
-	executor := &Executor{
-		DryRun:  false,
-		NewHook: NewStdIoPrinterHook,
+	executor := &executor{
+		DryRun: false,
 	}
 
 	return &cli.Command{
@@ -21,6 +24,7 @@ func NewCmdBring() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "dry-run",
+				Usage: "Stops before write things to file",
 				Value: executor.DryRun,
 
 				Destination: &executor.DryRun,
@@ -58,10 +62,20 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("open secret store: %w", err)
 			}
 
-			job := Job{NumTasks: conf.Things.Len()}
+			num_errors := 0
+			executor.NewHook = func(ctx context.Context, t task.Task) hook.Hook {
+				return hook.Join(
+					&countErrHook{n: &num_errors},
+					hook.NewPrintHook(os.Stdout, t),
+				)
+			}
+
+			job := task.Job{
+				NumTasks: conf.Things.Len(),
+			}
 			i := 0
 			conf.Things.Walk(conf.Dest, func(p string, t *thing.Thing) {
-				task := Task{
+				task := task.Task{
 					Thing: *t,
 
 					BringConfig: conf.Each,
@@ -75,7 +89,20 @@ func NewCmdBring() *cli.Command {
 				i++
 			})
 
+			if num_errors > 0 {
+				return cli.Exit("failed to bring some of things", 1)
+			}
+
 			return nil
 		},
 	}
+}
+
+type countErrHook struct {
+	hook.NopHook
+	n *int
+}
+
+func (h *countErrHook) OnError(err error) {
+	*h.n++
 }

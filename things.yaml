@@ -26,8 +26,8 @@ things:
       url: https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg
       digest: sha256:12794390cce7d0682ffc783c785e4282305684431b30b29ed75c224da24035b4
     microsoft.svg:
-      url: https://en.wikipedia.org/wiki/File:Microsoft_logo_(2012).svg
-      digest: sha256:e9e7ff23e63676741cbf0297010bb61614313165134924131b69178a45dab4aa
+      url: https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_%282012%29.svg
+      digest: sha256:34ec1619e4a62515d67c5240fe5762ef5a1838fe67d2fb1fb0b001099cebf1db
   money/:
     no-such-thing:
       url: https://localhost/not-exists

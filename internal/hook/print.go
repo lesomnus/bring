@@ -1,35 +1,33 @@
-package cmd
+package hook
 
 import (
-	"context"
 	"fmt"
-	"os"
+	"io"
 	"time"
 	"unicode"
 
 	"github.com/fatih/color"
+	"github.com/lesomnus/bring/internal/task"
 )
 
-type ExecuteHook interface {
-	OnStart()
-	OnSkip()
-	OnDone()
-	OnFinish()
-	OnError(err error)
-}
-
-type StdIoPrinterHook struct {
-	task Task
-	t0   time.Time
+type PrintHook struct {
+	o    io.Writer
+	task task.Task
 
 	isSettled bool
+
+	t0 time.Time
 }
 
-func NewStdIoPrinterHook(ctx context.Context, t Task) ExecuteHook {
-	return &StdIoPrinterHook{
-		task:      t,
-		isSettled: false,
+func NewPrintHook(w io.Writer, t task.Task) Hook {
+	return &PrintHook{
+		o:    w,
+		task: t,
 	}
+}
+
+func (h *PrintHook) print(format string, a ...any) {
+	fmt.Fprintf(h.o, format, a...)
 }
 
 func countDigits(n int) int {
@@ -44,7 +42,7 @@ func countDigits(n int) int {
 	return count
 }
 
-func (h *StdIoPrinterHook) header(sym string) string {
+func (h *PrintHook) header(sym string) string {
 	pb := color.New(color.FgHiBlack, color.Faint)
 	ph := color.New(color.FgWhite)
 	w := countDigits(h.task.Job.NumTasks)
@@ -56,11 +54,11 @@ func (h *StdIoPrinterHook) header(sym string) string {
 	return v
 }
 
-func (h *StdIoPrinterHook) path() string {
+func (h *PrintHook) path() string {
 	return color.New(color.FgHiWhite).Sprint(h.task.Dest)
 }
 
-func (h *StdIoPrinterHook) dt() string {
+func (h *PrintHook) dt() string {
 	t1 := time.Now()
 	dt := t1.Sub(h.t0)
 
@@ -91,36 +89,37 @@ func (h *StdIoPrinterHook) dt() string {
 	return v
 }
 
-func (h *StdIoPrinterHook) OnStart() {
+func (h *PrintHook) OnStart() {
 	h.t0 = time.Now()
 }
 
-func (h *StdIoPrinterHook) OnSkip() {
+func (h *PrintHook) OnSkip() {
 	h.isSettled = true
 
 	sym := color.New(color.FgHiYellow).Sprint("=")
-	fmt.Fprintf(os.Stdout, "%s %s • %s\n", h.header(sym), h.path(), h.dt())
+	h.print("%s %s • %s\n", h.header(sym), h.path(), h.dt())
 }
 
-func (h *StdIoPrinterHook) OnDone() {
+func (h *PrintHook) OnDone() {
 	h.isSettled = true
 
 	sym := color.New(color.FgHiGreen).Sprint("✓")
-	fmt.Fprintf(os.Stdout, "%s %s • %s\n", h.header(sym), h.path(), h.dt())
+	h.print("%s %s • %s\n", h.header(sym), h.path(), h.dt())
 
 }
 
-func (h *StdIoPrinterHook) OnError(err error) {
+func (h *PrintHook) OnError(err error) {
+	h.isSettled = true
+
 	pr := color.New(color.FgHiRed)
 	sym := pr.Sprint("!")
-	fmt.Fprintf(os.Stdout, "%s %s ∙ %s\n\t%s\n", h.header(sym), h.path(), h.dt(), pr.Sprint(err.Error()))
+	h.print("%s %s ∙ %s\n\t%s\n", h.header(sym), h.path(), h.dt(), pr.Sprint(err.Error()))
 }
 
-func (h *StdIoPrinterHook) OnFinish() {
+func (h *PrintHook) OnFinish() {
 	if h.isSettled {
 		return
 	}
 
-	sym := "◦"
-	fmt.Fprintf(os.Stdout, "%s %s\n", h.header(sym), h.path())
+	h.print("%s %s ∙ %s\n", h.header("◦"), h.path(), h.dt())
 }
