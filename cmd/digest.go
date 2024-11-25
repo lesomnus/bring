@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -8,7 +9,7 @@ import (
 	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func NewCmdDigest() *cli.Command {
@@ -23,7 +24,7 @@ func NewCmdDigest() *cli.Command {
 				Name:  "with",
 				Value: algorithm.String(),
 				Usage: "Algorithm to digest",
-				Action: func(ctx *cli.Context, s string) error {
+				Action: func(ctx context.Context, cmd *cli.Command, s string) error {
 					algorithm = digest.Algorithm(s)
 					if algorithm.Available() {
 						return nil
@@ -33,8 +34,8 @@ func NewCmdDigest() *cli.Command {
 				},
 			},
 		},
-		Action: func(c *cli.Context) error {
-			target := c.Args().Get(0)
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			target := cmd.Args().Get(0)
 			if !strings.Contains(target, "://") {
 				target = "file://" + target
 			}
@@ -52,7 +53,7 @@ func NewCmdDigest() *cli.Command {
 			}
 
 			t := thing.Thing{Url: u}
-			r, err := b.Bring(c.Context, t)
+			r, err := b.Bring(ctx, t)
 			if err != nil {
 				return fmt.Errorf("get reader: %w", err)
 			}

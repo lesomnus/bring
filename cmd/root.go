@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,10 +9,10 @@ import (
 
 	"github.com/lesomnus/bring/config"
 	"github.com/lesomnus/bring/log"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
-func NewApp() *cli.App {
+func NewApp() *cli.Command {
 	root := NewCmdBring()
 	flags := []cli.Flag{
 		&cli.BoolFlag{
@@ -40,7 +41,7 @@ func NewApp() *cli.App {
 
 	flags = append(flags, root.Flags...)
 
-	return &cli.App{
+	return &cli.Command{
 		Name:  "bring",
 		Usage: "Bring things.",
 
@@ -66,27 +67,27 @@ Example:
 			NewCmdDigest(),
 			NewCmdVersion(),
 		},
-		Before: func(ctx *cli.Context) error {
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			conf_path := "things.yaml"
-			if v := ctx.String("conf"); v != "" {
+			if v := cmd.String("conf"); v != "" {
 				conf_path = v
 			}
 
 			c, err := config.LoadFromFilepath(conf_path)
 			if err != nil {
 				if !errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("load config: %w", err)
+					return nil, fmt.Errorf("load config: %w", err)
 				}
 
 				c = config.New()
 			}
-			if ctx.Bool("verbose") {
+			if cmd.Bool("verbose") {
 				c.Log.Level = "info"
 			}
-			if v := ctx.String("log-level"); v != "" {
+			if v := cmd.String("log-level"); v != "" {
 				c.Log.Level = v
 			}
-			if v := ctx.String("log-format"); v != "" {
+			if v := cmd.String("log-format"); v != "" {
 				c.Log.Format = v
 			}
 
@@ -97,14 +98,14 @@ Example:
 				l.Info("load config from the file", slog.String("path", conf_path))
 			}
 
-			ctx.Context = config.Into(ctx.Context, c)
-			ctx.Context = log.Into(ctx.Context, l)
-			return nil
+			ctx = config.Into(ctx, c)
+			ctx = log.Into(ctx, l)
+			return ctx, nil
 		},
 		Action: root.Action,
 
-		ExitErrHandler: func(c *cli.Context, err error) {
-			l := log.From(c.Context)
+		ExitErrHandler: func(ctx context.Context, cmd *cli.Command, err error) {
+			l := log.From(ctx)
 
 			var e cli.ExitCoder
 			if errors.As(err, &e) {

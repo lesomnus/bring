@@ -9,7 +9,7 @@ import (
 	"github.com/lesomnus/bring/internal/hook"
 	"github.com/lesomnus/bring/internal/task"
 	"github.com/lesomnus/bring/thing"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func NewCmdBring() *cli.Command {
@@ -30,21 +30,21 @@ func NewCmdBring() *cli.Command {
 				Destination: &executor.DryRun,
 			},
 		},
-		Action: func(c *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			dest := ""
-			switch c.NArg() {
+			switch cmd.NArg() {
 			case 0:
 				return fmt.Errorf("path to config file must be given")
 			case 1:
 				break
 			case 2:
-				dest = c.Args().Get(1)
+				dest = cmd.Args().Get(1)
 
 			default:
 				return fmt.Errorf("expected 1 or 2 arguments")
 			}
 
-			conf_path := c.Args().First()
+			conf_path := cmd.Args().First()
 			conf, err := config.LoadFromFilepath(conf_path)
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
@@ -57,7 +57,7 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
-			executor.Secret, err = conf.Secret.Open(c.Context)
+			executor.Secret, err = conf.Secret.Open(ctx)
 			if err != nil {
 				return fmt.Errorf("open secret store: %w", err)
 			}
@@ -85,7 +85,7 @@ func NewCmdBring() *cli.Command {
 					Dest:  p,
 				}
 
-				executor.Execute(c.Context, task)
+				executor.Execute(ctx, task)
 				i++
 			})
 

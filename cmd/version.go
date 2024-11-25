@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 type buildInfo struct {
@@ -28,7 +29,7 @@ func NewCmdVersion() *cli.Command {
 		Name:  "version",
 		Usage: "Print the program information",
 
-		Action: func(c *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			b := strings.Builder{}
 			b.WriteString(fmt.Sprintf("BRING_VERSION=%s\n", _buildInfo.Version))
 			b.WriteString(fmt.Sprintf("BRING_TIME_BUILD=%s\n", _buildInfo.TimeBuild))

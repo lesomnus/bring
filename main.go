@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/lesomnus/bring/cmd"
@@ -8,5 +9,5 @@ import (
 
 func main() {
 	app := cmd.NewApp()
-	app.Run(os.Args)
+	app.Run(context.Background(), os.Args)
 }

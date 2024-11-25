@@ -22,13 +22,13 @@ RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
 		&& eval $(./bring version) \
 		&& echo "?" "$BRING_VERSION" "==" "$VERSION_NAME" \
 		&& [ "$BRING_VERSION" = "$VERSION_NAME" ] \
+		&& BRING_NAME="./bring-$VERSION_NAME-linux-$TARGETARCH" \
+		&& cp ./bring "$BRING_NAME" \
 		&& apk add --no-cache \
 			curl \
 		&& curl -sSL "https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_$TARGETARCH.tar.gz" -o ./gh.tar.gz \
 		&& tar -xf ./gh.tar.gz \
 		&& mv ./gh_*/bin/gh ./gh \
-		&& BRING_NAME="./bring-$VERSION_NAME-linux-$TARGETARCH" \
-		&& cp ./bring "$BRING_NAME" \
 		&& ./gh version \
 		&& ./gh auth status \
 		&& ./gh release --repo lesomnus/bring \
