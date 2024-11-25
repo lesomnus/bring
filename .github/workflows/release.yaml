@@ -4,7 +4,13 @@ on:
   release:
     types:
       - published
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Name of the version to release
+        required: false
+        default: "v0.0.0-test"
+        type: string
 
 jobs:
   build:
@@ -27,7 +33,7 @@ jobs:
           go generate ./...
           cat ./cmd/version.g.go
         env:
-          BRING_VERSION: ${{ github.ref_name }}
+          BRING_VERSION: ${{ github.event_name != 'workflow_dispatch' && github.ref_name || inputs.version }}
 
       - name: Image meta
         id: meta
