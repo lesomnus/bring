@@ -11,6 +11,7 @@ import (
 	"github.com/lesomnus/bring/internal/hook"
 	"github.com/lesomnus/bring/internal/hooks"
 	"github.com/lesomnus/bring/internal/task"
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 	"github.com/urfave/cli/v3"
 )
@@ -47,52 +48,63 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("expected 1 or 2 arguments")
 			}
 
-			conf := config.From(ctx)
+			c := config.From(ctx)
 			if dest != "" {
-				conf.Dest = dest
+				c.Dest = dest
 			}
-			if conf.Dest == "" {
+			if c.Dest == "" {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
-			var err error
-			executor.Secret, err = conf.Secret.Open(ctx)
-			if err != nil {
+			if s, err := c.Secret.Open(ctx); err != nil {
 				return fmt.Errorf("open secret store: %w", err)
+			} else {
+				executor.Secret = s
 			}
 
-			num_errors := 0
 			executor.NewHook = func(ctx context.Context, t task.Task) hook.Hook {
 				return hook.Tie(
 					&sinkHookMw{D: t.Dest},
-					hook.Forward(
-						hook.Join(
-							&countErrHook{n: &num_errors},
-							&hooks.PrintHook{T: t, O: os.Stdout},
-						),
-					),
+					hook.Forward(hook.Join(
+						&hooks.LogHook{T: t, L: log.From(ctx)},
+						&hooks.PrintHook{T: t, O: os.Stdout},
+					)),
 				)
 			}
 
-			job := task.Job{
-				NumTasks: conf.Things.Len(),
-			}
-			i := 0
-			conf.Things.Walk(conf.Dest, func(p string, t *thing.Thing) {
+			num_tasks := c.Things.Len()
+			num_tasks_done := 0
+			num_errors := 0
+			err := c.Things.Walk(c.Dest, func(p string, t *thing.Thing) error {
 				task := task.Task{
 					Thing: *t,
 
-					BringConfig: conf.Each,
+					BringConfig: c.Each,
 
-					Job:   job,
-					Order: i,
+					Job:   task.Job{NumTasks: num_tasks},
+					Order: num_tasks_done,
 					Dest:  p,
 				}
 
-				executor.Execute(ctx, task)
-				i++
-			})
+				if err := c.Secret.OpenTo(ctx, t.Url, &executor.Secret); err != nil {
+					return err
+				}
 
+				ctx, cancel := c.Each.ApplyBringTimeout(ctx)
+				defer cancel()
+
+				if r, err := executor.Execute(ctx, task); err != nil {
+					num_errors++
+				} else if r != nil {
+					defer r.Close()
+				}
+				num_tasks_done++
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 			if num_errors > 0 {
 				return cli.Exit("failed to bring some of things", 1)
 			}
@@ -132,13 +144,4 @@ func (h *sinkHookMw) OnDone(next hook.Hook, r io.Reader) {
 	} else {
 		next.OnDone(r)
 	}
-}
-
-type countErrHook struct {
-	hook.NopHook
-	n *int
-}
-
-func (h *countErrHook) OnError(err error) {
-	*h.n++
 }

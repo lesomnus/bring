@@ -65,8 +65,9 @@ a:
 	require.NoError(err)
 
 	visited := []string{}
-	root.Walk("", func(p string, t *thing.Thing) {
+	root.Walk("", func(p string, t *thing.Thing) error {
 		visited = append(visited, p)
+		return nil
 	})
 	require.Equal(
 		visited,

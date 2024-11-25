@@ -44,17 +44,27 @@ func SmbBringer(opts ...Option) Bringer {
 
 type smbFile struct {
 	*smb2.File
+	l *slog.Logger
+
 	share   *smb2.Share
 	session *smb2.Session
 	conn    net.Conn
 }
 
 func (f *smbFile) Close() error {
-	return errors.Join(
+	if f.conn == nil {
+		return nil
+	}
+
+	f.l.Debug("close SMB file")
+	err := errors.Join(
 		f.share.Umount(),
 		f.session.Logoff(),
 		f.conn.Close(),
 	)
+
+	f.conn = nil
+	return err
 }
 
 func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (v *smbFile, err error) {
@@ -64,7 +74,7 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 	c := b.conf
 	c.apply(opts)
 
-	v = &smbFile{}
+	v = &smbFile{l: l}
 
 	host := t.Url.Host
 	if !strings.Contains(host, ":") {

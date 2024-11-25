@@ -49,7 +49,7 @@ func FailFromDigest(d digest.Digest) (Fail, bool) {
 }
 
 func ErrFromDigest(d digest.Digest) error {
-	if !strings.HasPrefix(d.Algorithm().String(), failPrefix) {
+	if !strings.HasPrefix(string(d), failPrefix) {
 		return nil
 	}
 

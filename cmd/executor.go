@@ -21,62 +21,71 @@ type executor struct {
 	NewHook func(ctx context.Context, t task.Task) hook.Hook
 }
 
-func (e *executor) Execute(ctx context.Context, t task.Task) {
+func (e *executor) secret() secret.Store {
+	if e.Secret != nil {
+		return e.Secret
+	}
+
+	return secret.NopStore()
+}
+
+func (e *executor) Execute(ctx context.Context, t task.Task) (io.ReadCloser, error) {
 	hook := e.NewHook(ctx, t)
 	hook.OnStart()
 	defer hook.OnFinish()
 
+	with_validate := !(t.Dest == "" || t.Thing.Digest == "")
+
 	if err := t.Thing.Validate(); err != nil {
-		hook.OnError(fmt.Errorf("invalid thing: %w", err))
-		return
+		err = fmt.Errorf("invalid thing: %w", err)
+		hook.OnError(err)
+		return nil, err
 	}
 
 	b, err := bringer.FromUrl(t.Thing.Url)
 	if err != nil {
-		hook.OnError(fmt.Errorf("get bringer: %w", err))
-		return
-	} else {
+		err = fmt.Errorf("get bringer: %w", err)
+		hook.OnError(err)
+		return nil, err
+	} else if with_validate {
 		b = bringer.SafeBringer(b)
 	}
 
-	if ok, err := e.validate(t.Dest, t.Thing.Digest); err != nil {
-		hook.OnError(err)
-		return
-	} else if ok {
-		// Digest matches, skips bringing.
-		hook.OnSkip()
-		return
+	if with_validate {
+		if ok, err := e.validate(t.Dest, t.Thing.Digest); err != nil {
+			hook.OnError(err)
+			return nil, err
+		} else if ok {
+			// Digest matches, skips bringing.
+			hook.OnSkip()
+			return nil, nil
+		}
 	}
 
 	opts := []bringer.Option{}
 	opts = append(opts, t.BringConfig.AsOpts()...)
-	if pw, err := e.Secret.Read(ctx, t.Thing.Url); err != nil && !errors.Is(err, os.ErrNotExist) {
-		hook.OnError(fmt.Errorf("read secret: %w", err))
-		return
+	if pw, err := e.secret().Read(ctx, t.Thing.Url); err != nil && !errors.Is(err, os.ErrNotExist) {
+		err = fmt.Errorf("read secret: %w", err)
+		hook.OnError(err)
+		return nil, err
 	} else {
 		opts = append(opts, bringer.WithPassword(string(pw)))
 	}
-	if t.BringConfig.DialTimeout != 0 {
-		opts = append(opts, bringer.WithDialTimeout(t.BringConfig.DialTimeout))
-	}
-
-	ctx, cancel := t.BringConfig.ApplyTimeout(ctx)
-	defer cancel()
 
 	r, err := b.Bring(ctx, t.Thing, opts...)
 	if err != nil {
-		hook.OnError(fmt.Errorf("bring: %w", err))
-		return
-	} else {
-		defer r.Close()
+		err := fmt.Errorf("bring: %w", err)
+		hook.OnError(err)
+		return nil, err
 	}
 
 	if e.DryRun {
 		hook.OnDone(nil)
-		return
+		return r, nil
 	}
 
 	hook.OnDone(r)
+	return r, nil
 }
 
 func (e *executor) validate(p string, d digest.Digest) (bool, error) {

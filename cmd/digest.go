@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/lesomnus/bring/bringer"
+	"github.com/lesomnus/bring/config"
+	"github.com/lesomnus/bring/internal/hook"
+	"github.com/lesomnus/bring/internal/hooks"
+	"github.com/lesomnus/bring/internal/task"
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 	"github.com/opencontainers/go-digest"
 	"github.com/urfave/cli/v3"
@@ -46,22 +50,36 @@ func NewCmdDigest() *cli.Command {
 
 			var u url.URL
 			if v, err := url.Parse(target); err != nil {
-				return fmt.Errorf("parse target: %w", err)
+				return fmt.Errorf("parse resource URL: %w", err)
 			} else {
 				u = *v
 			}
 
-			b, err := bringer.FromUrl(u)
-			if err != nil {
-				return fmt.Errorf("get bringer: %w", err)
+			c := config.From(ctx)
+			l := log.From(ctx)
+			executor := &executor{
+				DryRun: true,
+				NewHook: func(ctx context.Context, t task.Task) hook.Hook {
+					return &hooks.LogHook{T: t, L: l}
+				},
+			}
+			if err := c.Secret.OpenTo(ctx, u, &executor.Secret); err != nil {
+				return err
 			}
 
-			t := thing.Thing{Url: u}
-			r, err := b.Bring(ctx, t)
+			ctx, cancel := c.Each.ApplyBringTimeout(ctx)
+			defer cancel()
+
+			r, err := executor.Execute(ctx, task.Task{
+				Thing: thing.Thing{Url: u},
+
+				BringConfig: c.Each,
+			})
 			if err != nil {
-				return fmt.Errorf("get reader: %w", err)
+				return err
+			} else {
+				defer r.Close()
 			}
-			defer r.Close()
 
 			d, err := algorithm.FromReader(r)
 			if err != nil {

@@ -38,8 +38,10 @@ func (t *Thing) Validate() error {
 	if err := ErrFromDigest(t.Digest); err != nil {
 		errs = append(errs, err)
 	}
-	if err := t.Digest.Validate(); err != nil {
-		errs = append(errs, fmt.Errorf("invalid digest: %w", err))
+	if t.Digest != "" {
+		if err := t.Digest.Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("invalid digest: %w", err))
+		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)

@@ -9,8 +9,7 @@ import (
 
 type LogHook struct {
 	T task.Task
-	L slog.Logger
-	N int // Number of tasks.
+	L *slog.Logger
 }
 
 func (h *LogHook) OnStart() {

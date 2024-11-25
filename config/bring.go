@@ -12,7 +12,7 @@ type BringConfig struct {
 	DialTimeout  time.Duration `yaml:"dial_timeout"`
 }
 
-func (c *BringConfig) ApplyTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+func (c *BringConfig) ApplyBringTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
 	if c.BringTimeout == 0 {
 		return ctx, func() {}
 	}

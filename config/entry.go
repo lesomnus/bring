@@ -15,7 +15,7 @@ type Entry struct {
 	Thing *thing.Thing
 }
 
-type EntryWalkFunc func(p string, t *thing.Thing)
+type EntryWalkFunc func(p string, t *thing.Thing) error
 
 func (e *Entry) IsLeaf() bool {
 	return e != nil && e.Thing != nil
@@ -35,20 +35,23 @@ func (e *Entry) Len() int {
 	return l
 }
 
-func (e *Entry) Walk(p string, f EntryWalkFunc) {
+func (e *Entry) Walk(p string, f EntryWalkFunc) error {
 	if e.IsLeaf() {
-		f(p, e.Thing)
-		return
+		return f(p, e.Thing)
 	}
 	if e.Next == nil {
-		return
+		return nil
 	}
 
 	ks := maps.Keys(e.Next)
 	for _, k := range slices.Sorted(ks) {
 		p := filepath.Join(p, k)
-		e.Next[k].Walk(p, f)
+		if err := e.Next[k].Walk(p, f); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (e *Entry) UnmarshalYAML(n *yaml.Node) error {

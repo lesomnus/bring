@@ -34,6 +34,23 @@ func (c *SecretConfig) Open(ctx context.Context) (secret.Store, error) {
 	return secret.FromUrl(ctx, u)
 }
 
+func (c *SecretConfig) OpenTo(ctx context.Context, u url.URL, store *secret.Store) error {
+	if *store != nil {
+		return nil
+	}
+	if u.User.Username() == "" {
+		return nil
+	}
+
+	s, err := c.Open(ctx)
+	if err != nil {
+		return fmt.Errorf("open secret store: %w", err)
+	}
+
+	*store = s
+	return nil
+}
+
 func (c *SecretConfig) AsOpts(ctx context.Context, store secret.Store, u url.URL) ([]bringer.Option, error) {
 	if u.User.Username() == "" {
 		return nil, nil
