@@ -11,10 +11,7 @@ RUN go mod download
 
 COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bring \
-	&& ./bring version \
-	&& eval $(./bring version) \
-	&& echo "?" "$BRING_VERSION" "==" "$GITHUB_REF_NAME" \
-	&& [ "$BRING_VERSION" = "$GITHUB_REF_NAME" ]
+	&& ./bring version
 
 RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
 	if [ "$GH_TOKEN" = "" ]; then \
@@ -22,6 +19,9 @@ RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
 		; \
 	else \
 		echo push assets to GitHub release \
+		&& eval $(./bring version) \
+		&& echo "?" "$BRING_VERSION" "==" "$GITHUB_REF_NAME" \
+		&& [ "$BRING_VERSION" = "$GITHUB_REF_NAME" ] \
 		&& apk add --no-cache \
 			curl \
 		&& curl -sSL "https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_$TARGETARCH.tar.gz" -o ./gh.tar.gz \
