@@ -73,32 +73,32 @@ Example:
 				conf_path = v
 			}
 
-			c, err := config.LoadFromFilepath(conf_path)
+			conf, err := config.LoadFromFilepath(conf_path)
 			if err != nil {
 				if !errors.Is(err, os.ErrNotExist) {
 					return nil, fmt.Errorf("load config: %w", err)
 				}
 
-				c = config.New()
+				conf = config.New()
 			}
 			if cmd.Bool("verbose") {
-				c.Log.Level = "info"
+				conf.Log.Level = "info"
 			}
 			if v := cmd.String("log-level"); v != "" {
-				c.Log.Level = v
+				conf.Log.Level = v
 			}
 			if v := cmd.String("log-format"); v != "" {
-				c.Log.Format = v
+				conf.Log.Format = v
 			}
 
-			l := c.Log.Logger()
+			l := conf.Log.Logger()
 			if err != nil {
 				l.Info("use default config")
 			} else {
 				l.Info("load config from the file", slog.String("path", conf_path))
 			}
 
-			ctx = config.Into(ctx, c)
+			ctx = config.Into(ctx, conf)
 			ctx = log.Into(ctx, l)
 			return ctx, nil
 		},

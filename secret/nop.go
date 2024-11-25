@@ -9,7 +9,7 @@ import (
 type nopStore struct{}
 
 func NopStore() Store {
-	return &nopStore{}
+	return &wrapper{s: &nopStore{}}
 }
 
 func (s nopStore) Read(ctx context.Context, u url.URL) ([]byte, error) {

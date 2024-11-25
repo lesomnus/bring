@@ -3,10 +3,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/lesomnus/bring/config"
 	"github.com/lesomnus/bring/internal/hook"
+	"github.com/lesomnus/bring/internal/hooks"
 	"github.com/lesomnus/bring/internal/task"
 	"github.com/lesomnus/bring/thing"
 	"github.com/urfave/cli/v3"
@@ -44,12 +47,7 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("expected 1 or 2 arguments")
 			}
 
-			conf_path := cmd.Args().First()
-			conf, err := config.LoadFromFilepath(conf_path)
-			if err != nil {
-				return fmt.Errorf("load config: %w", err)
-			}
-
+			conf := config.From(ctx)
 			if dest != "" {
 				conf.Dest = dest
 			}
@@ -57,6 +55,7 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
+			var err error
 			executor.Secret, err = conf.Secret.Open(ctx)
 			if err != nil {
 				return fmt.Errorf("open secret store: %w", err)
@@ -64,9 +63,14 @@ func NewCmdBring() *cli.Command {
 
 			num_errors := 0
 			executor.NewHook = func(ctx context.Context, t task.Task) hook.Hook {
-				return hook.Join(
-					&countErrHook{n: &num_errors},
-					hook.NewPrintHook(os.Stdout, t),
+				return hook.Tie(
+					&sinkHookMw{D: t.Dest},
+					hook.Forward(
+						hook.Join(
+							&countErrHook{n: &num_errors},
+							&hooks.PrintHook{T: t, O: os.Stdout},
+						),
+					),
 				)
 			}
 
@@ -95,6 +99,38 @@ func NewCmdBring() *cli.Command {
 
 			return nil
 		},
+	}
+}
+
+type sinkHookMw struct {
+	hook.NopMw
+	D string
+}
+
+func (h *sinkHookMw) sink(r io.Reader) error {
+	d := filepath.Dir(h.D)
+	if err := os.MkdirAll(d, os.ModePerm); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+
+	w, err := os.Create(h.D)
+	if err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+	defer w.Close()
+
+	if _, err := io.Copy(w, r); err != nil {
+		return fmt.Errorf("bringing: %w", err)
+	}
+
+	return nil
+}
+
+func (h *sinkHookMw) OnDone(next hook.Hook, r io.Reader) {
+	if err := h.sink(r); err != nil {
+		next.OnError(err)
+	} else {
+		next.OnDone(r)
 	}
 }
 

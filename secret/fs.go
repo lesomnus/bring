@@ -21,7 +21,7 @@ type fsStore struct {
 }
 
 func FsStore(fs fs.ReadDirFS) Store {
-	return &fsStore{fs: fs}
+	return &wrapper{s: &fsStore{fs: fs}}
 }
 
 func (s fsStore) Read(ctx context.Context, u url.URL) ([]byte, error) {

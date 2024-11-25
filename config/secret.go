@@ -2,9 +2,13 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
+	"os"
 
+	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/secret"
 )
@@ -28,4 +32,27 @@ func (c *SecretConfig) Open(ctx context.Context) (secret.Store, error) {
 	}
 
 	return secret.FromUrl(ctx, u)
+}
+
+func (c *SecretConfig) AsOpts(ctx context.Context, store secret.Store, u url.URL) ([]bringer.Option, error) {
+	if u.User.Username() == "" {
+		return nil, nil
+	}
+	if store == nil {
+		store = secret.NopStore()
+	}
+
+	l := log.From(ctx)
+	if _, ok := u.User.Password(); ok {
+		l.Info("use password", slog.String("source", "URL"))
+		return nil, nil
+	}
+
+	l.Info("use password", slog.String("source", "store"))
+	pw, err := store.Read(ctx, u)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("read secret: %w", err)
+	}
+
+	return []bringer.Option{bringer.WithPassword(string(pw))}, nil
 }

@@ -33,7 +33,7 @@ func New() *Config {
 
 func From(ctx context.Context) *Config {
 	v, ok := ctx.Value(confCtxKey{}).(*Config)
-	if ok {
+	if !ok {
 		return nil
 	}
 

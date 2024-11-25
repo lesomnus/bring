@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
-	"path/filepath"
 
 	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/internal/hook"
 	"github.com/lesomnus/bring/internal/task"
-	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/secret"
 	"github.com/opencontainers/go-digest"
 )
@@ -25,14 +22,6 @@ type executor struct {
 }
 
 func (e *executor) Execute(ctx context.Context, t task.Task) {
-	// TODO: move to hook
-
-	l := log.From(ctx)
-	l.Info("start",
-		slog.String("from", t.Thing.Url.Redacted()),
-		slog.String("to", t.Dest),
-	)
-
 	hook := e.NewHook(ctx, t)
 	hook.OnStart()
 	defer hook.OnFinish()
@@ -59,62 +48,35 @@ func (e *executor) Execute(ctx context.Context, t task.Task) {
 		return
 	}
 
-	ctx_bring := ctx
 	opts := []bringer.Option{}
-	if t.Thing.Url.User.Username() != "" {
-		if _, ok := t.Thing.Url.User.Password(); ok {
-			l.Info("use password", slog.String("source", "URL"))
-		} else {
-			l.Info("use password", slog.String("source", "store"))
-
-			// TODO: need timeout?
-			pw, err := e.Secret.Read(ctx, t.Thing.Url)
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				hook.OnError(fmt.Errorf("read secret: %w", err))
-				return
-			}
-
-			opts = append(opts, bringer.WithPassword(string(pw)))
-		}
-	}
-	if t.BringConfig.BringTimeout != 0 {
-		c, cancel := context.WithTimeout(ctx_bring, t.BringConfig.BringTimeout)
-		ctx_bring = c
-		defer cancel()
+	opts = append(opts, t.BringConfig.AsOpts()...)
+	if pw, err := e.Secret.Read(ctx, t.Thing.Url); err != nil && !errors.Is(err, os.ErrNotExist) {
+		hook.OnError(fmt.Errorf("read secret: %w", err))
+		return
+	} else {
+		opts = append(opts, bringer.WithPassword(string(pw)))
 	}
 	if t.BringConfig.DialTimeout != 0 {
 		opts = append(opts, bringer.WithDialTimeout(t.BringConfig.DialTimeout))
 	}
-	r, err := b.Bring(ctx_bring, t.Thing, opts...)
+
+	ctx, cancel := t.BringConfig.ApplyTimeout(ctx)
+	defer cancel()
+
+	r, err := b.Bring(ctx, t.Thing, opts...)
 	if err != nil {
 		hook.OnError(fmt.Errorf("bring: %w", err))
 		return
+	} else {
+		defer r.Close()
 	}
-	defer r.Close()
 
 	if e.DryRun {
+		hook.OnDone(nil)
 		return
 	}
 
-	d := filepath.Dir(t.Dest)
-	if err := os.MkdirAll(d, os.ModePerm); err != nil {
-		hook.OnError(fmt.Errorf("mkdir: %w", err))
-		return
-	}
-
-	w, err := os.Create(t.Dest)
-	if err != nil {
-		hook.OnError(fmt.Errorf("create: %w", err))
-		return
-	}
-	defer w.Close()
-
-	if _, err := io.Copy(w, r); err != nil {
-		hook.OnError(fmt.Errorf("bringing: %w", err))
-		return
-	}
-
-	hook.OnDone()
+	hook.OnDone(r)
 }
 
 func (e *executor) validate(p string, d digest.Digest) (bool, error) {

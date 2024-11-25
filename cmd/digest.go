@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/thing"
@@ -35,9 +34,14 @@ func NewCmdDigest() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			target := cmd.Args().Get(0)
-			if !strings.Contains(target, "://") {
-				target = "file://" + target
+			target := ""
+			switch cmd.NArg() {
+			case 0:
+				return fmt.Errorf("resource URL must be given")
+			case 1:
+				target = cmd.Args().Get(0)
+			default:
+				return fmt.Errorf("expected exactly 1 argument")
 			}
 
 			var u url.URL
