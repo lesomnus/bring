@@ -64,6 +64,7 @@ Example:
 		Flags: flags,
 		Commands: []*cli.Command{
 			NewCmdDigest(),
+			NewCmdVersion(),
 		},
 		Before: func(ctx *cli.Context) error {
 			conf_path := "things.yaml"

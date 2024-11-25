@@ -19,9 +19,11 @@ func FileBringer(opts ...Option) Bringer {
 
 func (b *fileBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
 	l := log.From(ctx).With(name("file"))
-	l.Info("open", slog.String("path", t.Url.Path))
 
-	f, err := os.Open(t.Url.Path)
+	p := fmt.Sprintf("%s%s", t.Url.Host, t.Url.Path)
+	l.Info("open", slog.String("path", p))
+
+	f, err := os.Open(p)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}

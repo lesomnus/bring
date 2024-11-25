@@ -38,6 +38,8 @@ func (b *safeBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) 
 		return b.finalizeSeeker(t.Digest, s)
 	}
 
+	defer r.Close()
+
 	sink := &bytes.Buffer{} // TODO: it can be a file.
 	if err := b.copyWithVerify(t.Digest, r, sink); err != nil {
 		return nil, err
