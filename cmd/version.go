@@ -15,7 +15,7 @@ type buildInfo struct {
 	GitDirty  bool
 }
 
-//go:generate go run ./gen/version
+//go:generate bash -c "../scripts/gen-version-file.sh > /dev/null"
 var _buildInfo = buildInfo{
 	Version:   "v0.0.0-edge",
 	TimeBuild: time.Now().Format(time.RFC3339),

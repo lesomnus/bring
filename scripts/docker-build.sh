@@ -9,7 +9,7 @@ __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Directory where this scr
 __root="$(cd "$(dirname "${__dir}")" && pwd)"         # Root directory of project.
 
 export GITHUB_TOKEN=""
-GITHUB_REF_NAME=${BRING_VERSION:-"v0.0.0-test"}
+VERSION_NAME=${BRING_VERSION:-"v0.0.0-test"}
 
 cd "$__root"
 
@@ -17,6 +17,6 @@ docker buildx build \
 	--no-cache \
 	--progress=plain \
 	--secret id=github_token,env=GITHUB_TOKEN \
-	--build-arg GITHUB_REF_NAME="$GITHUB_REF_NAME" \
+	--build-arg "VERSION_NAME=$VERSION_NAME" \
 	--tag bring:test \
 	.

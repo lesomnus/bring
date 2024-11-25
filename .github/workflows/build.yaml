@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
@@ -25,7 +24,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: go generate ./...
+      - name: Prepare
+        run: ./scripts/gen-version-file.sh
+        env:
+          BRING_VERSION: edge
 
       - name: Build and push
         uses: docker/build-push-action@v4
