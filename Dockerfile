@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 FROM golang:1.23-alpine3.20 AS builder
 
+ARG TARGETARCH
+ARG GITHUB_REF_NAME
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -8,8 +11,35 @@ RUN go mod download
 
 COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o ./bring \
-	&& ./bring version
+	&& ./bring version \
+	&& eval $(./bring version) \
+	&& echo "?" "$BRING_VERSION" "==" "$GITHUB_REF_NAME" \
+	&& [ "$BRING_VERSION" = "$GITHUB_REF_NAME" ]
 
+RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
+	if [ "$GH_TOKEN" = "" ]; then \
+		echo skip push assets to GitHub release \
+		; \
+	else \
+		echo push assets to GitHub release \
+		&& apk add --no-cache \
+			curl \
+		&& curl -sSL "https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_$TARGETARCH.tar.gz" -o ./gh.tar.gz \
+		&& tar -xf ./gh.tar.gz \
+		&& mv ./gh_*/bin/gh ./gh \
+		&& BRING_NAME="./bring-linux-$TARGETARCH" \
+		&& cp ./bring "$BRING_NAME" \
+		&& ./gh version \
+		&& ./gh auth status \
+		&& ./gh release --repo lesomnus/bring \
+			upload "$GITHUB_REF_NAME" "$BRING_NAME" \
+			--clobber \
+		&& rm -rf \
+			./gh.tar.gz \
+			./gh_* \
+			./bring-* \
+		; \
+	fi
 
 
 FROM scratch

@@ -10,8 +10,8 @@ import (
 )
 
 func main() {
-	version, ok := os.LookupEnv("BRING_VERSION")
-	if !ok {
+	version, _ := os.LookupEnv("BRING_VERSION")
+	if !strings.HasPrefix(version, "v") {
 		version = "v0.0.0-edge"
 	}
 
@@ -42,8 +42,8 @@ package cmd
 func init(){
 	b := &_buildInfo
 	b.Version   = %q
-	b.BuildTime = %q
-	b.GitHash   = %q
+	b.TimeBuild = %q
+	b.GitRev    = %q
 	b.GitDirty  = %v 
 }
 `,
