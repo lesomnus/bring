@@ -27,7 +27,7 @@ RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
 		&& curl -sSL "https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_$TARGETARCH.tar.gz" -o ./gh.tar.gz \
 		&& tar -xf ./gh.tar.gz \
 		&& mv ./gh_*/bin/gh ./gh \
-		&& BRING_NAME="./bring-linux-$TARGETARCH" \
+		&& BRING_NAME="./bring-$VERSION_NAME-linux-$TARGETARCH" \
 		&& cp ./bring "$BRING_NAME" \
 		&& ./gh version \
 		&& ./gh auth status \

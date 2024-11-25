@@ -32,7 +32,7 @@ func NewCmdVersion() *cli.Command {
 			b := strings.Builder{}
 			b.WriteString(fmt.Sprintf("BRING_VERSION=%s\n", _buildInfo.Version))
 			b.WriteString(fmt.Sprintf("BRING_TIME_BUILD=%s\n", _buildInfo.TimeBuild))
-			b.WriteString(fmt.Sprintf("BUILD_GIT_REV=%s", _buildInfo.GitRev))
+			b.WriteString(fmt.Sprintf("BRING_GIT_REV=%s", _buildInfo.GitRev))
 			if _buildInfo.GitDirty {
 				b.WriteString("-dirty")
 			}

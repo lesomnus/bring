@@ -9,7 +9,7 @@ __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Directory where this scr
 __root="$(cd "$(dirname "${__dir}")" && pwd)"         # Root directory of project.
 
 BRING_VERSION=${BRING_VERSION:-"v0.0.0-test"}
-TIME_BUILD=$(date --rfc-3339=seconds)
+TIME_BUILD=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 GIT_REV=$(git rev-parse HEAD)
 GIT_DIRTY=$(git status --porcelain | read -t 0 && echo "true" || echo "false")
 
