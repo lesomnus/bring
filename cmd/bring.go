@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/lesomnus/bring/config"
+	"github.com/lesomnus/bring/entry"
 	"github.com/lesomnus/bring/internal/hook"
 	"github.com/lesomnus/bring/internal/hooks"
 	"github.com/lesomnus/bring/internal/task"
@@ -17,14 +20,31 @@ import (
 )
 
 func NewCmdBring() *cli.Command {
+	dest := ""
+	dest_given := false
 	dry_run := false
 
 	return &cli.Command{
-		Name:  "bring",
-		Usage: "Bring things.",
+		Name:   "",
+		Hidden: true,
 
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Category: "Bring",
+
+				Name:    "into",
+				Aliases: []string{"o"},
+				Usage:   "Destination to place things",
+				Action: func(ctx context.Context, cmd *cli.Command, v string) error {
+					dest_given = true
+					return nil
+				},
+
+				Destination: &dest,
+			},
 			&cli.BoolFlag{
+				Category: "Bring",
+
 				Name:  "dry-run",
 				Usage: "Stops before write things to file",
 				Value: dry_run,
@@ -32,26 +52,39 @@ func NewCmdBring() *cli.Command {
 				Destination: &dry_run,
 			},
 		},
+
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			dest := ""
+			inventory_path := "things.yaml"
 			switch cmd.NArg() {
 			case 0:
-				return fmt.Errorf("path to config file must be given")
-			case 1:
 				break
-			case 2:
-				dest = cmd.Args().Get(1)
+			case 1:
+				inventory_path = cmd.Args().Get(0)
 
 			default:
-				return fmt.Errorf("expected 1 or 2 arguments")
+				return fmt.Errorf("expected 0 or 1 argument")
+			}
+			if !dest_given {
+				return errors.New("destination must be given; use --into")
+			}
+			if dest == "" {
+				return errors.New(`destination cannot be empty; give "./" to bring into current directory`)
 			}
 
 			c := config.From(ctx)
-			if dest != "" {
-				c.Dest = dest
+			l := log.From(ctx)
+			l.Info("things will be loaded", slog.String("from", inventory_path))
+			l.Info("things will be placed", slog.String("to", dest))
+
+			if info, err := os.Stat(dest); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("open destination: %w", err)
+			} else if err == nil && !info.IsDir() {
+				return errors.New("destination must be a directory")
 			}
-			if c.Dest == "" {
-				return fmt.Errorf("destination must be specified in the config file or given by argument")
+
+			i, err := entry.FromPath(inventory_path)
+			if err != nil {
+				return fmt.Errorf("read inventory: %w", err)
 			}
 
 			exe := executor{
@@ -69,10 +102,10 @@ func NewCmdBring() *cli.Command {
 				},
 			}
 
-			num_tasks := c.Things.Len()
+			num_tasks := i.Things.Len()
 			num_tasks_done := 0
 			num_errors := 0
-			err := c.Things.Walk(c.Dest, func(p string, t *thing.Thing) error {
+			err = i.Things.Walk(dest, func(p string, t *thing.Thing) error {
 				task := task.Task{
 					Thing: *t,
 

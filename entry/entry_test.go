@@ -1,9 +1,9 @@
-package config_test
+package entry_test
 
 import (
 	"testing"
 
-	"github.com/lesomnus/bring/config"
+	"github.com/lesomnus/bring/entry"
 	"github.com/lesomnus/bring/thing"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -20,7 +20,7 @@ qux:
   url: https://qux.com
 `
 
-	root := config.Entry{}
+	root := entry.Entry{}
 	err := yaml.Unmarshal([]byte(data), &root)
 	require.NoError(err)
 
@@ -60,7 +60,7 @@ b/:
 a:
 `
 
-	root := config.Entry{}
+	root := entry.Entry{}
 	err := yaml.Unmarshal([]byte(data), &root)
 	require.NoError(err)
 

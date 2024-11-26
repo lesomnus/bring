@@ -11,18 +11,13 @@ import (
 type confCtxKey struct{}
 
 type Config struct {
-	Dest string
-	Log  LogConfig
-
+	Log    LogConfig
 	Secret SecretConfig
-
 	Each   BringConfig // Config applied to each `Thing`s.
-	Things Entry
 }
 
 func New() *Config {
 	return &Config{
-		Dest: "./inventory/",
 		Log: LogConfig{
 			Enabled: true,
 			Format:  "simple",
@@ -44,7 +39,7 @@ func Into(ctx context.Context, conf *Config) context.Context {
 	return context.WithValue(ctx, confCtxKey{}, conf)
 }
 
-func LoadFromFilepath(p string) (*Config, error) {
+func FromPath(p string) (*Config, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
