@@ -8,22 +8,22 @@ import (
 )
 
 type BringConfig struct {
-	BringTimeout time.Duration `yaml:"bring_timeout"`
-	DialTimeout  time.Duration `yaml:"dial_timeout"`
+	TimeoutBring time.Duration `yaml:"timeout_bring"`
+	TimeoutDial  time.Duration `yaml:"timeout_dial"`
 }
 
 func (c *BringConfig) ApplyBringTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	if c.BringTimeout == 0 {
+	if c.TimeoutBring == 0 {
 		return ctx, func() {}
 	}
 
-	return context.WithTimeout(ctx, c.BringTimeout)
+	return context.WithTimeout(ctx, c.TimeoutBring)
 }
 
 func (c *BringConfig) AsOpts() []bringer.Option {
 	opts := []bringer.Option{}
-	if c.DialTimeout != 0 {
-		opts = append(opts, bringer.WithDialTimeout(c.DialTimeout))
+	if c.TimeoutDial != 0 {
+		opts = append(opts, bringer.WithDialTimeout(c.TimeoutDial))
 	}
 
 	return opts

@@ -1,0 +1,21 @@
+log:
+  enabled: true
+  format: simple # "text" | "json" | "simple"
+  level: warn # "error" | "warn" | "info" | "debug"
+
+secret:
+  enabled: true
+  url: .secrets
+
+each:
+  # Process of "bring" involves the process of "dialing" to connect to the source resource
+  # and the subsequent process of "downloading" the resource once the connection is established.
+  #
+  #  |<-------- bring -------->|
+  #  |<- dial ->|<- download ->|
+  #
+  # So it doesn't make sense for `bring_timeout` to be shorter than `dial_timeout`.
+  # If the resource is large, you may want to use large value of `bring_timeout`.
+  # If the initial connection is slow, you may want to use large value of `dial_timeout`.
+  timeout_bring: 5m
+  timeout_dial: 3s
