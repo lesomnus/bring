@@ -84,10 +84,7 @@ func (h *PrintHook) OnSkip() {
 }
 
 func (h *PrintHook) OnDone(r io.Reader) {
-	h.sym = "◦"
-	if r != nil {
-		h.sym = color.New(color.FgHiGreen).Sprint("✓")
-	}
+	h.sym = color.New(color.FgHiGreen).Sprint("✓")
 }
 
 func (h *PrintHook) OnError(err error) {

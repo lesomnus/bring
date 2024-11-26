@@ -57,20 +57,19 @@ func NewCmdDigest() *cli.Command {
 
 			c := config.From(ctx)
 			l := log.From(ctx)
-			executor := &executor{
-				DryRun: true,
+			exe := &executor{
 				NewHook: func(ctx context.Context, t task.Task) hook.Hook {
 					return &hooks.LogHook{T: t, L: l}
 				},
 			}
-			if err := c.Secret.OpenTo(ctx, u, &executor.Secret); err != nil {
+			if err := c.Secret.OpenTo(ctx, u, &exe.Secret); err != nil {
 				return err
 			}
 
 			ctx, cancel := c.Each.ApplyBringTimeout(ctx)
 			defer cancel()
 
-			r, err := executor.Execute(ctx, task.Task{
+			r, err := exe.Run(ctx, task.Task{
 				Thing: thing.Thing{Url: u},
 
 				BringConfig: c.Each,

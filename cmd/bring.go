@@ -17,9 +17,7 @@ import (
 )
 
 func NewCmdBring() *cli.Command {
-	executor := &executor{
-		DryRun: false,
-	}
+	dry_run := false
 
 	return &cli.Command{
 		Name:  "bring",
@@ -29,9 +27,9 @@ func NewCmdBring() *cli.Command {
 			&cli.BoolFlag{
 				Name:  "dry-run",
 				Usage: "Stops before write things to file",
-				Value: executor.DryRun,
+				Value: dry_run,
 
-				Destination: &executor.DryRun,
+				Destination: &dry_run,
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -56,20 +54,19 @@ func NewCmdBring() *cli.Command {
 				return fmt.Errorf("destination must be specified in the config file or given by argument")
 			}
 
-			if s, err := c.Secret.Open(ctx); err != nil {
-				return fmt.Errorf("open secret store: %w", err)
-			} else {
-				executor.Secret = s
-			}
-
-			executor.NewHook = func(ctx context.Context, t task.Task) hook.Hook {
-				return hook.Tie(
-					&sinkHookMw{D: t.Dest},
-					hook.Forward(hook.Join(
+			exe := executor{
+				NewHook: func(ctx context.Context, t task.Task) hook.Hook {
+					hs := []hook.Mw{}
+					if !dry_run {
+						hs = append(hs, &sinkHookMw{D: t.Dest})
+					}
+					hs = append(hs, hook.Forward(hook.Join(
 						&hooks.LogHook{T: t, L: log.From(ctx)},
 						&hooks.PrintHook{T: t, O: os.Stdout},
-					)),
-				)
+					)))
+
+					return hook.Tie(hs...)
+				},
 			}
 
 			num_tasks := c.Things.Len()
@@ -86,14 +83,14 @@ func NewCmdBring() *cli.Command {
 					Dest:  p,
 				}
 
-				if err := c.Secret.OpenTo(ctx, t.Url, &executor.Secret); err != nil {
+				if err := c.Secret.OpenTo(ctx, t.Url, &exe.Secret); err != nil {
 					return err
 				}
 
 				ctx, cancel := c.Each.ApplyBringTimeout(ctx)
 				defer cancel()
 
-				if r, err := executor.Execute(ctx, task); err != nil {
+				if r, err := exe.Run(ctx, task); err != nil {
 					num_errors++
 				} else if r != nil {
 					defer r.Close()

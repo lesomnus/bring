@@ -15,9 +15,7 @@ import (
 )
 
 type executor struct {
-	Secret secret.Store
-
-	DryRun  bool
+	Secret  secret.Store
 	NewHook func(ctx context.Context, t task.Task) hook.Hook
 }
 
@@ -29,7 +27,7 @@ func (e *executor) secret() secret.Store {
 	return secret.NopStore()
 }
 
-func (e *executor) Execute(ctx context.Context, t task.Task) (io.ReadCloser, error) {
+func (e *executor) Run(ctx context.Context, t task.Task) (io.ReadCloser, error) {
 	hook := e.NewHook(ctx, t)
 	hook.OnStart()
 	defer hook.OnFinish()
@@ -77,11 +75,6 @@ func (e *executor) Execute(ctx context.Context, t task.Task) (io.ReadCloser, err
 		err := fmt.Errorf("bring: %w", err)
 		hook.OnError(err)
 		return nil, err
-	}
-
-	if e.DryRun {
-		hook.OnDone(nil)
-		return r, nil
 	}
 
 	hook.OnDone(r)
