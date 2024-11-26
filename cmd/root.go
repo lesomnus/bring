@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func NewApp() *cli.Command {
+func NewApp(l **slog.Logger) *cli.Command {
 	root := NewCmdBring()
 	flags := []cli.Flag{
 		&cli.BoolFlag{
@@ -69,17 +69,31 @@ Example:
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			conf_path := "things.yaml"
-			if v := cmd.String("conf"); v != "" {
-				conf_path = v
+			conf_path_opt := cmd.HasName("conf")
+			if conf_path_opt {
+				conf_path = cmd.String("conf")
 			}
 
 			conf, err := config.LoadFromFilepath(conf_path)
 			if err != nil {
-				if !errors.Is(err, os.ErrNotExist) {
-					return nil, fmt.Errorf("load config: %w", err)
+				conf = config.New()
+				if !errors.Is(err, os.ErrNotExist) || conf_path_opt {
+					// There is an error
+					// - config on default path
+					// - config on explicitly given path
+					err := fmt.Errorf("load config: %w", err)
+					*l = conf.Log.Logger()
+					return nil, err
 				}
 
-				conf = config.New()
+				// There is no config on default path, so use default config.
+				defer func() {
+					(*l).Info("use default config")
+				}()
+			} else {
+				defer func() {
+					(*l).Info("load config from the file", slog.String("path", conf_path))
+				}()
 			}
 			if cmd.Bool("verbose") {
 				conf.Log.Level = "info"
@@ -91,30 +105,12 @@ Example:
 				conf.Log.Format = v
 			}
 
-			l := conf.Log.Logger()
-			if err != nil {
-				l.Info("use default config")
-			} else {
-				l.Info("load config from the file", slog.String("path", conf_path))
-			}
+			*l = conf.Log.Logger()
 
 			ctx = config.Into(ctx, conf)
-			ctx = log.Into(ctx, l)
+			ctx = log.Into(ctx, *l)
 			return ctx, nil
 		},
 		Action: root.Action,
-
-		ExitErrHandler: func(ctx context.Context, cmd *cli.Command, err error) {
-			l := log.From(ctx)
-
-			var e cli.ExitCoder
-			if errors.As(err, &e) {
-				l.Error(e.Error())
-				os.Exit(e.ExitCode())
-			} else if err != nil {
-				l.Error(err.Error())
-				os.Exit(1)
-			}
-		},
 	}
 }

@@ -141,7 +141,7 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 	v.share = v.share.WithContext(ctx)
 	v.File, err = v.share.Open(p)
 	if err != nil {
-		return nil, fmt.Errorf("open: %w", err)
+		return v, fmt.Errorf("open: %w", err)
 	}
 
 	return v, nil
