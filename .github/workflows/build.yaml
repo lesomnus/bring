@@ -6,8 +6,10 @@ on:
       - main
     paths:
       - "**/*.go"
+      - "!**/*_test.go"
       - ".dockerignore"
       - "Dockerfile"
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -25,14 +27,29 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare
-        run: ./scripts/gen-version-file.sh
+        id: prepare
+        run: |
+          BRING_VERSION="$(gh release list --exclude-drafts --json tagName --jq '.[0].tagName')"
+          BRING_VERSION+="+{{ github.run_id }}"
+          echo "version=$BRING_VERSION" | tee >> $GITHUB_OUTPUT
+          ./scripts/gen-version-file.sh
         env:
-          BRING_VERSION: edge
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/lesomnus/bring
+          tags: |
+            type=edge
+            type=raw,value=${{ steps.prepare.outputs.version }}
 
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/lesomnus/bring:edge
           push: true
