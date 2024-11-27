@@ -13,7 +13,9 @@ import (
 func main() {
 	var l *slog.Logger
 	handleError := func(err error) {
-		l.Error(err.Error())
+		if l != nil {
+			l.Error(err.Error())
+		}
 
 		var e cli.ExitCoder
 		if errors.As(err, &e) {
