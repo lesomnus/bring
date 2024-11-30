@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -39,8 +38,12 @@ func (s fsStore) Read(ctx context.Context, u url.URL) ([]byte, error) {
 	dss := [][]fs.DirEntry{ds}
 
 	var d fs.DirEntry
-	entires := strings.Split(u.Path, "/")
-	for _, e := range entires {
+
+	entries := strings.Split(filepath.Clean(u.Path), "/")
+	if len(entries) > 0 && entries[0] == "" {
+		entries = entries[1:]
+	}
+	for _, e := range entries {
 		i := slices.IndexFunc(ds, func(d_ fs.DirEntry) bool {
 			return d_.Name() == e
 		})
@@ -53,7 +56,7 @@ func (s fsStore) Read(ctx context.Context, u url.URL) ([]byte, error) {
 			break
 		}
 
-		p_next := path.Join(e)
+		p_next := filepath.Join(p, e)
 		ds_next, err := s.fs.ReadDir(p_next)
 		if err != nil {
 			break
@@ -64,7 +67,7 @@ func (s fsStore) Read(ctx context.Context, u url.URL) ([]byte, error) {
 		dss = append(dss, ds)
 	}
 
-	name := u.User.Username()
+	name := "@" + u.User.Username()
 	for _, ds := range slices.Backward(dss) {
 		i := slices.IndexFunc(ds, func(d_ fs.DirEntry) bool {
 			return d_.Name() == name
@@ -76,7 +79,7 @@ func (s fsStore) Read(ctx context.Context, u url.URL) ([]byte, error) {
 
 		p = filepath.Dir(p)
 	}
-	if p == "." {
+	if p == u.Scheme || p == "." {
 		return nil, os.ErrNotExist
 	}
 

@@ -59,9 +59,6 @@ func (e *Entry) UnmarshalYAML(n *yaml.Node) error {
 	if err := n.Decode(nodes); err != nil {
 		return err
 	}
-	if len(nodes) == 0 {
-		return nil
-	}
 
 	e.Next = map[string]*Entry{}
 	for name, node := range nodes {

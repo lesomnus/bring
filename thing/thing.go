@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/opencontainers/go-digest"
 	"gopkg.in/yaml.v3"
@@ -11,7 +12,7 @@ import (
 
 type Thing struct {
 	Url    url.URL
-	Digest digest.Digest
+	Digest *digest.Digest
 }
 
 func (t *Thing) UnmarshalYAML(n *yaml.Node) error {
@@ -20,66 +21,46 @@ func (t *Thing) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	if n, ok := obj["url"]; ok {
-		t.Url = *parseUrl(&n)
+	if n, ok := obj["url"]; !ok {
+		return errors.New("url must be set")
+	} else {
+		if v, err := parseUrl(&n); err != nil {
+			return fmt.Errorf("invalid URL: %w", err)
+		} else {
+			t.Url = *v
+		}
 	}
 	if n, ok := obj["digest"]; ok {
-		t.Digest = parseDigest(&n)
-	}
-
-	return nil
-}
-
-func (t *Thing) Validate() error {
-	errs := []error{}
-	if err := ErrFromUrl(&t.Url); err != nil {
-		errs = append(errs, err)
-	}
-	if err := ErrFromDigest(t.Digest); err != nil {
-		errs = append(errs, err)
-	}
-	if t.Digest != "" {
-		if err := t.Digest.Validate(); err != nil {
-			errs = append(errs, fmt.Errorf("invalid digest: %w", err))
+		if v, err := parseDigest(&n); err != nil {
+			return fmt.Errorf("invalid digest: %w", err)
+		} else {
+			t.Digest = &v
 		}
 	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
 
 	return nil
 }
 
-func parseUrl(n *yaml.Node) *url.URL {
+func parseUrl(n *yaml.Node) (*url.URL, error) {
 	if n.Kind != yaml.ScalarNode {
-		return NewFailedUrl(FailInvalid, "expected `url` to be a string")
+		return nil, errors.New("expected `url` to be a string")
+	}
+	if strings.TrimSpace(n.Value) == "" {
+		return nil, errors.New("url cannot be empty")
 	}
 
-	v, err := url.Parse(n.Value)
-	if err != nil {
-		return NewFailedUrl(FailInvalid, err.Error())
-	}
-
-	return v
+	return url.Parse(n.Value)
 }
 
-func parseDigest(n *yaml.Node) digest.Digest {
-	switch n.Kind {
-	case yaml.ScalarNode:
-		return digest.Digest(n.Value)
-
-	case yaml.MappingNode:
-		o := struct {
-			Algo  string
-			Value string
-		}{}
-		if err := n.Decode(&o); err != nil {
-			return NewFailedDigest(FailInvalid, err.Error())
-		}
-
-		return digest.NewDigestFromHex(o.Algo, o.Value)
-
-	default:
-		return NewFailedDigest(FailInvalid, "expected `digest` field to be a string or a map")
+func parseDigest(n *yaml.Node) (digest.Digest, error) {
+	if n.Kind != yaml.ScalarNode {
+		return "", errors.New("expected `url` to be a string")
 	}
+
+	v, err := digest.Parse(n.Value)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", n.Value, err)
+	}
+
+	return v, nil
 }

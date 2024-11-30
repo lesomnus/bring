@@ -85,7 +85,7 @@ func NewCmdDigest() *cli.Command {
 				return fmt.Errorf("read: %w", err)
 			}
 
-			fmt.Println(d.String())
+			fmt.Fprintln(cmd.Writer, d.String())
 			return nil
 		},
 	}

@@ -1,4 +1,4 @@
-package bringer
+package smb
 
 import (
 	"context"
@@ -11,38 +11,45 @@ import (
 	"time"
 
 	"github.com/hirochachacha/go-smb2"
+	"github.com/lesomnus/bring/bringer"
+	"github.com/lesomnus/bring/bringer/option"
 	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
 )
 
-type smbBringerConfig struct {
+type br struct {
 	password    *string
 	dialTimeout time.Duration
 }
 
-func (c *smbBringerConfig) apply(opts []Option) {
+func (c *br) apply(opts []bringer.Option) {
 	for _, opt := range opts {
 		switch o := opt.(type) {
-		case (*pwOpt):
-			c.password = &o.v
-		case (*dialTimeoutOpt):
-			c.dialTimeout = o.v
+		case (*option.PwOption):
+			c.password = &o.Value
+		case (*option.DialTimeoutOpt):
+			c.dialTimeout = o.Value
 		}
 	}
 }
 
-type smbBringer struct {
-	conf smbBringerConfig
+func (b *br) with(opts []bringer.Option) *br {
+	if len(opts) == 0 {
+		return b
+	}
+
+	b_ := *b
+	b_.apply(opts)
+	return &b_
 }
 
-func SmbBringer(opts ...Option) Bringer {
-	b := &smbBringer{}
-	b.conf.apply(opts)
-
+func SmbBringer(opts ...bringer.Option) bringer.Bringer {
+	b := &br{}
+	b.apply(opts)
 	return b
 }
 
-type smbFile struct {
+type file struct {
 	*smb2.File
 	l *slog.Logger
 
@@ -51,7 +58,7 @@ type smbFile struct {
 	conn    net.Conn
 }
 
-func (f *smbFile) Close() error {
+func (f *file) Close() error {
 	if f.conn == nil {
 		return nil
 	}
@@ -67,14 +74,12 @@ func (f *smbFile) Close() error {
 	return err
 }
 
-func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (v *smbFile, err error) {
-	l := log.From(ctx).With(name("smb"))
+func (b *br) bring(ctx context.Context, t thing.Thing, opts ...bringer.Option) (v *file, err error) {
+	l := log.From(ctx).With(slog.String("bringer", "smb"))
+	b = b.with(opts)
 	// TODO: connection pool? session pool?
 
-	c := b.conf
-	c.apply(opts)
-
-	v = &smbFile{l: l}
+	v = &file{l: l}
 
 	host := t.Url.Host
 	if !strings.Contains(host, ":") {
@@ -84,8 +89,8 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 	}
 
 	ctx_dial := ctx
-	if c.dialTimeout != 0 {
-		ctx_, cancel := context.WithTimeout(ctx, c.dialTimeout)
+	if b.dialTimeout != 0 {
+		ctx_, cancel := context.WithTimeout(ctx, b.dialTimeout)
 		defer cancel()
 		ctx_dial = ctx_
 	}
@@ -105,14 +110,14 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 
 	username := t.Url.User.Username()
 	password := ""
-	if c.password != nil {
-		password = *c.password
+	if b.password != nil {
+		password = *b.password
 	}
 	if v, ok := t.Url.User.Password(); ok {
 		password = v
 	}
 
-	share, p := b.splitPath(t.Url.Path)
+	share, p := splitPath(t.Url.Path)
 
 	l.Info("dial SMB",
 		slog.String("username", username),
@@ -147,7 +152,7 @@ func (b *smbBringer) bring(ctx context.Context, t thing.Thing, opts ...Option) (
 	return v, nil
 }
 
-func (b *smbBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
+func (b *br) Bring(ctx context.Context, t thing.Thing, opts ...bringer.Option) (io.ReadCloser, error) {
 	f, err := b.bring(ctx, t, opts...)
 	if err != nil {
 		errs := []error{err}
@@ -167,7 +172,7 @@ func (b *smbBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (
 }
 
 // Splits `/share_name/filepath` into `[share_name, filepath]`.
-func (b *smbBringer) splitPath(p string) (string, string) {
+func splitPath(p string) (string, string) {
 	p, _ = strings.CutPrefix(p, "/")
 	ps := strings.SplitN(p, "/", 2)
 	switch len(ps) {
@@ -178,4 +183,8 @@ func (b *smbBringer) splitPath(p string) (string, string) {
 	default:
 		panic("splint into at most 2")
 	}
+}
+
+func init() {
+	bringer.Register("smb", SmbBringer)
 }

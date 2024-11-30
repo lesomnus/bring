@@ -39,7 +39,7 @@ func NewCmdVersion() *cli.Command {
 			}
 			b.WriteString("\n")
 
-			fmt.Print(b.String())
+			fmt.Fprintln(cmd.Writer, b.String())
 			return nil
 		},
 	}

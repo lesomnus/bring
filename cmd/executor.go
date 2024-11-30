@@ -10,6 +10,7 @@ import (
 	"github.com/lesomnus/bring/bringer"
 	"github.com/lesomnus/bring/internal/hook"
 	"github.com/lesomnus/bring/internal/task"
+	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/secret"
 	"github.com/opencontainers/go-digest"
 )
@@ -28,17 +29,13 @@ func (e *executor) secret() secret.Store {
 }
 
 func (e *executor) Run(ctx context.Context, t task.Task) (io.ReadCloser, error) {
+	l := log.From(ctx)
+
 	hook := e.NewHook(ctx, t)
 	hook.OnStart()
 	defer hook.OnFinish()
 
-	with_validate := !(t.Dest == "" || t.Thing.Digest == "")
-
-	if err := t.Thing.Validate(); err != nil {
-		err = fmt.Errorf("invalid thing: %w", err)
-		hook.OnError(err)
-		return nil, err
-	}
+	with_validate := !(t.Dest == "" || t.Thing.Digest == nil)
 
 	b, err := bringer.FromUrl(t.Thing.Url)
 	if err != nil {
@@ -50,7 +47,7 @@ func (e *executor) Run(ctx context.Context, t task.Task) (io.ReadCloser, error) 
 	}
 
 	if with_validate {
-		if ok, err := e.validate(t.Dest, t.Thing.Digest); err != nil {
+		if ok, err := e.validate(t.Dest, *t.Thing.Digest); err != nil {
 			hook.OnError(err)
 			return nil, err
 		} else if ok {
@@ -66,6 +63,8 @@ func (e *executor) Run(ctx context.Context, t task.Task) (io.ReadCloser, error) 
 		err = fmt.Errorf("read secret: %w", err)
 		hook.OnError(err)
 		return nil, err
+	} else if errors.Is(err, os.ErrNotExist) {
+		l.Warn("password not found")
 	} else {
 		opts = append(opts, bringer.WithPassword(string(pw)))
 	}

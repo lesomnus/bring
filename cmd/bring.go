@@ -20,9 +20,8 @@ import (
 )
 
 func NewCmdBring() *cli.Command {
-	dest := ""
-	dest_given := false
-	dry_run := false
+	opt_dest := ""
+	opt_dry_run := false
 
 	return &cli.Command{
 		Name:   "",
@@ -35,21 +34,17 @@ func NewCmdBring() *cli.Command {
 				Name:    "into",
 				Aliases: []string{"o"},
 				Usage:   "Destination to place things",
-				Action: func(ctx context.Context, cmd *cli.Command, v string) error {
-					dest_given = true
-					return nil
-				},
 
-				Destination: &dest,
+				Destination: &opt_dest,
 			},
 			&cli.BoolFlag{
 				Category: "Bring",
 
 				Name:  "dry-run",
 				Usage: "Stops before write things to file",
-				Value: dry_run,
+				Value: opt_dry_run,
 
-				Destination: &dry_run,
+				Destination: &opt_dry_run,
 			},
 		},
 
@@ -64,19 +59,19 @@ func NewCmdBring() *cli.Command {
 			default:
 				return fmt.Errorf("expected 0 or 1 argument")
 			}
-			if !dest_given {
+			if !cmd.IsSet("into") {
 				return errors.New("destination must be given; use --into")
 			}
-			if dest == "" {
+			if opt_dest == "" {
 				return errors.New(`destination cannot be empty; give "./" to bring into current directory`)
 			}
 
 			c := config.From(ctx)
 			l := log.From(ctx)
 			l.Info("things will be loaded", slog.String("from", inventory_path))
-			l.Info("things will be placed", slog.String("to", dest))
+			l.Info("things will be placed", slog.String("into", opt_dest))
 
-			if info, err := os.Stat(dest); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if info, err := os.Stat(opt_dest); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("open destination: %w", err)
 			} else if err == nil && !info.IsDir() {
 				return errors.New("destination must be a directory")
@@ -90,12 +85,12 @@ func NewCmdBring() *cli.Command {
 			exe := executor{
 				NewHook: func(ctx context.Context, t task.Task) hook.Hook {
 					hs := []hook.Mw{}
-					if !dry_run {
+					if !opt_dry_run {
 						hs = append(hs, &sinkHookMw{D: t.Dest})
 					}
-					hs = append(hs, hook.Forward(hook.Join(
+					hs = append(hs, hook.Tap(hook.Join(
 						&hooks.LogHook{T: t, L: log.From(ctx)},
-						&hooks.PrintHook{T: t, O: os.Stdout},
+						&hooks.PrintHook{T: t, O: cmd.Writer},
 					)))
 
 					return hook.Tie(hs...)
@@ -105,7 +100,7 @@ func NewCmdBring() *cli.Command {
 			num_tasks := i.Things.Len()
 			num_tasks_done := 0
 			num_errors := 0
-			err = i.Things.Walk(dest, func(p string, t *thing.Thing) error {
+			err = i.Things.Walk(opt_dest, func(p string, t *thing.Thing) error {
 				task := task.Task{
 					Thing: *t,
 

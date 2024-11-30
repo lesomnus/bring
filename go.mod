@@ -5,6 +5,7 @@ go 1.23.3
 require (
 	github.com/fatih/color v1.18.0
 	github.com/hirochachacha/go-smb2 v1.1.0
+	github.com/joho/godotenv v1.5.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v3 v3.0.0-alpha9.5

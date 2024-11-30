@@ -24,6 +24,9 @@ qux:
 	err := yaml.Unmarshal([]byte(data), &root)
 	require.NoError(err)
 
+	n := root.Len()
+	require.Equal(2, n)
+
 	require.False(root.IsLeaf())
 	require.Len(root.Next, 2)
 	require.Contains(root.Next, "foo/")

@@ -3,8 +3,10 @@ package bringer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/lesomnus/bring/log"
 	"github.com/lesomnus/bring/thing"
@@ -20,7 +22,10 @@ func SafeBringer(b Bringer) Bringer {
 }
 
 func (b *safeBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) (io.ReadCloser, error) {
-	l := log.From(ctx).With(name("safe"))
+	l := log.From(ctx).With(slog.String("bringer", "safe"))
+	if t.Digest == nil {
+		return nil, errors.New("no digest")
+	}
 
 	algorithm := t.Digest.Algorithm()
 	if !algorithm.Available() {
@@ -35,13 +40,13 @@ func (b *safeBringer) Bring(ctx context.Context, t thing.Thing, opts ...Option) 
 	if s, ok := r.(io.ReadSeekCloser); ok {
 		// We can seek to start after calculating a digest rather than copy.
 		l.Debug("source is seek-able; seek start")
-		return b.finalizeSeeker(t.Digest, s)
+		return b.finalizeSeeker(*t.Digest, s)
 	}
 
 	defer r.Close()
 
 	sink := &bytes.Buffer{} // TODO: it can be a file.
-	if err := b.copyWithVerify(t.Digest, r, sink); err != nil {
+	if err := b.copyWithVerify(*t.Digest, r, sink); err != nil {
 		return nil, err
 	}
 

@@ -31,6 +31,7 @@ func (c *SecretConfig) Open(ctx context.Context) (secret.Store, error) {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
+	l.Info("open secret store", slog.String("url", u.Redacted()))
 	return secret.FromUrl(ctx, u)
 }
 

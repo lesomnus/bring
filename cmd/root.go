@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func NewApp(logger **slog.Logger) *cli.Command {
+func MewCmdRoot(logger **slog.Logger) *cli.Command {
 	root := NewCmdBring()
 	flags := []cli.Flag{
 		&cli.BoolFlag{
