@@ -2,6 +2,7 @@
 FROM golang:1.23-alpine3.20 AS builder
 
 ARG TARGETARCH
+ARG REPO_NAME
 ARG VERSION_NAME
 
 WORKDIR /app
@@ -19,25 +20,10 @@ RUN --mount=type=secret,id=github_token,env=GH_TOKEN \
 		; \
 	else \
 		echo push assets to GitHub release \
-		&& eval $(./bring version) \
-		&& echo "?" "$BRING_VERSION" "==" "$VERSION_NAME" \
-		&& [ "$BRING_VERSION" = "$VERSION_NAME" ] \
-		&& BRING_NAME="./bring-$VERSION_NAME-linux-$TARGETARCH" \
-		&& cp ./bring "$BRING_NAME" \
-		&& apk add --no-cache \
-			curl \
-		&& curl -sSL "https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_linux_$TARGETARCH.tar.gz" -o ./gh.tar.gz \
-		&& tar -xf ./gh.tar.gz \
-		&& mv ./gh_*/bin/gh ./gh \
-		&& ./gh version \
-		&& ./gh auth status \
-		&& ./gh release --repo lesomnus/bring \
-			upload "$VERSION_NAME" "$BRING_NAME" \
-			--clobber \
-		&& rm -rf \
-			./gh.tar.gz \
-			./gh_* \
-			./bring-* \
+			&& apk add --no-cache \
+				curl \
+				bash \
+			&& ./scripts/release.sh \
 		; \
 	fi
 

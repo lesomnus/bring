@@ -8,15 +8,19 @@ set -o nounset
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # Directory where this script exists.
 __root="$(cd "$(dirname "${__dir}")" && pwd)"         # Root directory of project.
 
-export GITHUB_TOKEN=""
-VERSION_NAME=${BRING_VERSION:-"v0.0.0-test"}
-
 cd "$__root"
+
+REPO_NAME="lesomnus/bring"
+VERSION_NAME=""
+if [ -z "${GH_TOKEN:-""}" ]; then
+	export GH_TOKEN="gho_invalid"
+fi
 
 docker buildx build \
 	--no-cache \
 	--progress=plain \
-	--secret id=github_token,env=GITHUB_TOKEN \
+	--secret id=github_token,env=GH_TOKEN \
+	--build-arg "REPO_NAME=$REPO_NAME" \
 	--build-arg "VERSION_NAME=$VERSION_NAME" \
 	--tag bring:test \
 	.

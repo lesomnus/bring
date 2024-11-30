@@ -47,8 +47,7 @@ jobs:
       - name: Prepare
         id: prepare
         run: |
-          BRING_VERSION="$(gh release list --exclude-drafts --json tagName --jq '.[0].tagName')"
-          BRING_VERSION+="+{{ github.run_id }}"
+          export BRING_VERSION="$(gh release list --exclude-drafts --json tagName --jq '.[0].tagName')-run.${{ github.run_id }}"
           echo "version=$BRING_VERSION" | tee -a $GITHUB_OUTPUT
           ./scripts/gen-version-file.sh
         env:
@@ -61,7 +60,7 @@ jobs:
           images: ghcr.io/lesomnus/bring
           tags: |
             type=edge
-            type=raw,value=${{ steps.prepare.outputs.version }}
+            type=semver,pattern={{version}},value=${{ steps.prepare.outputs.version }}
 
       - name: Build and push
         uses: docker/build-push-action@v4
@@ -70,4 +69,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          push: true
