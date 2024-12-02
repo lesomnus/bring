@@ -101,7 +101,7 @@ func (h *PrintHook) OnFinish() {
 	}
 
 	w := countDigits(h.T.Job.NumTasks)
-	n := color.New(color.FgWhite).Sprintf("%*d", w, h.T.Order)
+	n := color.New(color.FgWhite).Sprintf("%*d", w, h.T.Order+1)
 	N := fmt.Sprintf("%d", h.T.Job.NumTasks)
 
 	// [n/N|sym] path • dt
